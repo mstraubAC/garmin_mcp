@@ -37,6 +37,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
 
 from garmin_mcp import (
     activity_management,
@@ -211,6 +212,10 @@ def make_app(
         routes.append(_build_callback_route(auth_provider))
     if onboarding_manager is not None:
         routes.extend(build_onboarding_routes(onboarding_manager))
+    # Serve vendored static assets (htmx) from the auth module.
+    import os as _os
+    _static_dir = _os.path.join(_os.path.dirname(__file__), "auth", "static")
+    routes.append(Mount("/static", app=StaticFiles(directory=_static_dir), name="static"))
     routes.append(Mount("/", app=mcp_app))
 
     return Starlette(routes=routes, lifespan=lifespan)
