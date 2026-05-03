@@ -15,12 +15,12 @@ import pytest
 from unittest.mock import Mock
 from mcp.server.fastmcp import FastMCP
 
-from garmin_mcp import (
+from garmin_mcp.tools import (
     devices,
-    weight_management,
+    weight as weight_management,
     user_profile,
-    data_management,
-    gear_management,
+    data as data_management,
+    gear as gear_management,
     womens_health
 )
 from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
