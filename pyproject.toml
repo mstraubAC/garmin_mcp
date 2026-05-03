@@ -59,7 +59,7 @@ line-length = 100
 exclude = [".venv", "__pycache__", ".git"]
 
 [tool.ruff.lint]
-per-file-ignores = {"src/garmin_mcp/__init__.py" = ["F401"]}
+per-file-ignores = {"src/garmin_mcp/__init__.py" = ["F401"], "tests/unit/test_auth_throttle.py" = ["E402"], "tests/unit/test_user_context.py" = ["E402"], "tests/unit/test_auth_storage.py" = ["E731"], "tests/unit/test_maintenance_rotate.py" = ["B017"]}
 select = ["E", "W", "F", "I", "B", "C4", "UP"]
 ignore = ["E501", "B008", "B904"]
 
