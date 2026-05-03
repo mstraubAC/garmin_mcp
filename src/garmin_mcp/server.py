@@ -56,11 +56,19 @@ from garmin_mcp import (
 )
 from garmin_mcp.auth.audit import AuditLog
 from garmin_mcp.auth.entra import EntraOIDCClient
+from garmin_mcp.auth.garmin_tokens import GarminTokenStore
 from garmin_mcp.auth.jwt import JwtSigner
+from garmin_mcp.auth.onboarding import OnboardingManager
+from garmin_mcp.auth.onboarding_routes import build_routes as build_onboarding_routes
 from garmin_mcp.auth.provider import GarminMcpProvider
 from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket
-from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
+from garmin_mcp.user_context import (
+    ClientCache,
+    MultiUserClientCache,
+    SingleUserClientCache,
+    set_client_cache,
+)
 
 
 def build_mcp(
@@ -146,41 +154,55 @@ def _build_callback_route(auth_provider: GarminMcpProvider) -> Route:
 
 def make_app(
     client_provider=_default_client_provider,
+    client_cache: ClientCache | None = None,
     auth_provider: GarminMcpProvider | None = None,
     public_url: str | None = None,
+    onboarding_manager: OnboardingManager | None = None,
 ) -> Starlette:
     """Build the ASGI app.
 
-    Args:
-        client_provider: Callable returning a Garmin client.
-        auth_provider: When set, OAuth is enforced and `/callback` is exposed.
-        public_url: Required when `auth_provider` is set.
+    Two ways to wire the per-user Garmin client lookup:
+
+      * `client_provider` — legacy single-user mode: a callable that returns
+        one Garmin client; we wrap it in `SingleUserClientCache`. This is
+        what tests and the no-auth dev path use.
+      * `client_cache` — production multi-user mode: pass a fully-built
+        `MultiUserClientCache` (or any `ClientCache`). When set,
+        `client_provider` is ignored.
+
+    `auth_provider` enables OAuth and adds the `/callback` route; when an
+    `onboarding_manager` is also provided, the onboarding HTML routes are
+    mounted as well.
     """
     mcp = build_mcp(auth_provider=auth_provider, public_url=public_url)
     mcp_app = mcp.streamable_http_app()
 
     @asynccontextmanager
     async def lifespan(_):
-        set_client_cache(SingleUserClientCache(client_provider()))
+        if client_cache is not None:
+            set_client_cache(client_cache)
+        else:
+            set_client_cache(SingleUserClientCache(client_provider()))
         async with mcp.session_manager.run():
             yield
 
     routes: list = [Route("/healthz", healthz, methods=["GET"])]
     if auth_provider is not None:
         routes.append(_build_callback_route(auth_provider))
+    if onboarding_manager is not None:
+        routes.extend(build_onboarding_routes(onboarding_manager))
     routes.append(Mount("/", app=mcp_app))
 
     return Starlette(routes=routes, lifespan=lifespan)
 
 
 def make_production_app() -> Starlette:
-    """Build the OAuth-protected ASGI app from env vars. Used by `main()`.
+    """Build the OAuth-protected, multi-user ASGI app from env vars.
 
     Required env vars:
         MCP_PUBLIC_URL, JWT_SIGNING_KEY,
-        ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET
-        GARMIN_EMAIL, GARMIN_PASSWORD (for the shared single-user Garmin
-        account in this step; replaced by per-user storage in step 5).
+        ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET,
+        GARMIN_MCP_DATA_KEY  (Fernet key — see `garmin_tokens.GarminTokenStore`)
 
     Optional:
         GARMIN_MCP_DATA_PATH (default /var/lib/garmin-mcp/state.db)
@@ -207,14 +229,25 @@ def make_production_app() -> Starlette:
         per_ip_bucket=per_ip_bucket,
         shared_token=os.environ.get("MCP_REGISTRATION_TOKEN"),
     )
+    token_store = GarminTokenStore(storage, os.environ["GARMIN_MCP_DATA_KEY"])
+    onboarding = OnboardingManager(token_store)
+    client_cache = MultiUserClientCache(token_store)
     provider = GarminMcpProvider(
         storage=storage,
         entra=entra,
         jwt_signer=jwt_signer,
         registration_guard=guard,
         audit=audit,
+        garmin_tokens=token_store,
+        onboarding=onboarding,
+        public_url=public_url,
     )
-    return make_app(auth_provider=provider, public_url=public_url)
+    return make_app(
+        client_cache=client_cache,
+        auth_provider=provider,
+        public_url=public_url,
+        onboarding_manager=onboarding,
+    )
 
 
 # Default `app` for `uvicorn garmin_mcp.server:app` — no-auth, kept stable
