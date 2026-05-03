@@ -56,7 +56,7 @@ jobs:
 
     - name: Check Python syntax
       run: |
-        uv run python -m py_compile src/garmin_mcp/*.py
+        uv run python -m compileall src/garmin_mcp -q
         echo "✅ All Python files have valid syntax"
 
     - name: Check import structure
