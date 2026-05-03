@@ -66,6 +66,7 @@ from garmin_mcp.auth.onboarding_routes import build_routes as build_onboarding_r
 from garmin_mcp.auth.provider import GarminMcpProvider
 from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket, ToolCallGuard
+from garmin_mcp.maintenance.audit_alert import audit_alert_loop
 from garmin_mcp.maintenance.cleanup import cleanup_loop
 from garmin_mcp.user_context import (
     ClientCache,
@@ -277,7 +278,10 @@ def make_production_app() -> Starlette:
         auth_provider=provider,
         public_url=public_url,
         onboarding_manager=onboarding,
-        background_task_factories=[lambda: cleanup_loop(storage)],
+        background_task_factories=[
+            lambda: cleanup_loop(storage),
+            lambda: audit_alert_loop(),
+        ],
     )
 
 
