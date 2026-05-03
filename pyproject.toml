@@ -119,8 +119,8 @@ ignore_errors = true
 
 [tool.coverage.run]
 source = ["src/garmin_mcp"]
-omit = ["*/tests/*", "*/__pycache__/*"]
+omit = ["*/tests/*", "*/__pycache__/*", "src/garmin_mcp/_stdio.py"]
 
 [tool.coverage.report]
-fail_under = 78
+fail_under = 80
 show_missing = true

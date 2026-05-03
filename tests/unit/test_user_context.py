@@ -252,3 +252,25 @@ def test_cache_wraps_with_proxy_when_guard_set(storage, token_store):
     )
     client = cache.get_or_load("u1")
     assert isinstance(client, RateLimitedGarminProxy)
+
+
+def test_cache_get_or_load_reloads_when_idle_ttl_zero(storage, token_store):
+    """With TTL=0, every call reloads."""
+    _seed_user_with_token(storage, token_store, "u1", "blob1")
+    cache = MultiUserClientCache(
+        token_store, garmin_factory=_fake_garmin_factory(), idle_ttl_seconds=0
+    )
+    c1 = cache.get_or_load("u1")
+    c2 = cache.get_or_load("u1")
+    assert c1 is not c2  # Always reloads
+
+
+def test_cache_size_returns_entry_count(storage, token_store):
+    """size() returns cached entry count."""
+    _seed_user_with_token(storage, token_store, "u1", "blob1")
+    _seed_user_with_token(storage, token_store, "u2", "blob2")
+    cache = MultiUserClientCache(token_store, garmin_factory=_fake_garmin_factory())
+    cache.get_or_load("u1")
+    assert cache.size() == 1
+    cache.get_or_load("u2")
+    assert cache.size() == 2
