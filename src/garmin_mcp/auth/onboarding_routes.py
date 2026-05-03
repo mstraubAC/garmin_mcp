@@ -28,11 +28,7 @@ from garmin_mcp.auth.onboarding import (
 
 log = logging.getLogger(__name__)
 
-HTMX_SCRIPT = (
-    '<script src="https://unpkg.com/htmx.org@2.0.4" '
-    'integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" '
-    'crossorigin="anonymous"></script>'
-)
+HTMX_SCRIPT = '<script src="/static/htmx.min.js"></script>'
 
 
 def _layout(body: str, title: str = "Garmin MCP onboarding") -> str:
