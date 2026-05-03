@@ -28,6 +28,7 @@ garmin-mcp = "garmin_mcp:main"
 garmin-mcp-http = "garmin_mcp.server:main"
 garmin-mcp-auth = "garmin_mcp.auth_cli:main"
 garmin-mcp-rotate-data-key = "garmin_mcp.maintenance.rotate_data_key:main"
+garmin-mcp-verify-audit = "garmin_mcp.maintenance.verify_audit:main"
 
 [tool.uv]
 dev-dependencies = [
