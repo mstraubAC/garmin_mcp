@@ -68,8 +68,10 @@ from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket, ToolCallGua
 from garmin_mcp.maintenance.cleanup import cleanup_loop
 from garmin_mcp.user_context import (
     ClientCache,
+    GarminSessionExpiredError,
     MultiUserClientCache,
     SingleUserClientCache,
+    UserNotOnboardedError,
     set_client_cache,
 )
 
@@ -250,7 +252,11 @@ def make_production_app() -> Starlette:
     token_store = GarminTokenStore(storage, os.environ["GARMIN_MCP_DATA_KEY"])
     onboarding = OnboardingManager(token_store)
     tool_call_guard = ToolCallGuard(storage)
-    client_cache = MultiUserClientCache(token_store, tool_call_guard=tool_call_guard)
+    client_cache = MultiUserClientCache(
+        token_store,
+        tool_call_guard=tool_call_guard,
+        onboarding_url=f"{public_url}/onboard",
+    )
     provider = GarminMcpProvider(
         storage=storage,
         entra=entra,
