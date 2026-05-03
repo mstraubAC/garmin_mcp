@@ -49,6 +49,21 @@ class UserNotOnboardedError(Exception):
         self.user_id = user_id
 
 
+class GarminSessionExpiredError(Exception):
+    """Raised when a Garmin API call returns 401 (token expired).
+
+    The HTTP layer should turn this into a structured JSON-RPC error
+    containing the onboarding URL so the user can re-authenticate.
+    """
+
+    def __init__(self, user_id: str, onboarding_url: str = ""):
+        super().__init__(
+            f"Garmin session expired for user {user_id} — re-onboard at {onboarding_url}"
+        )
+        self.user_id = user_id
+        self.onboarding_url = onboarding_url
+
+
 class ClientCache:
     """Resolves a user_id to a Garmin client. Subclasses define lookup."""
 
@@ -90,10 +105,12 @@ class MultiUserClientCache(ClientCache):
         idle_ttl_seconds: int = 30 * 60,
         is_cn: bool = False,
         tool_call_guard: "ToolCallGuard | None" = None,
+        onboarding_url: str = "",
     ):
         self._tokens = token_store
         self._idle_ttl = idle_ttl_seconds
         self._is_cn = is_cn
+        self._onboarding_url = onboarding_url
         # Allow tests to inject a fake Garmin constructor.
         self._garmin_factory = garmin_factory or (lambda: Garmin(is_cn=is_cn))
         self._entries: dict[str, tuple[Garmin, float]] = {}
@@ -119,9 +136,12 @@ class MultiUserClientCache(ClientCache):
         client = self._garmin_factory()
         client.garth.loads(token_blob)
 
-        # Wrap with rate limiting if a guard is configured.
+        # Wrap with rate limiting + session-expiry detection.
         if self._guard is not None:
-            client = RateLimitedGarminProxy(client, user_id, self._guard)
+            client = RateLimitedGarminProxy(
+                client, user_id, self._guard,
+                cache=self, onboarding_url=self._onboarding_url,
+            )
 
         with self._lock:
             self._entries[user_id] = (client, time.monotonic())
@@ -137,51 +157,103 @@ class MultiUserClientCache(ClientCache):
 
 
 class RateLimitedGarminProxy:
-    """Wraps a Garmin instance, checking ToolCallGuard before each method call.
+    """Wraps a Garmin instance, checking ToolCallGuard before each method call
+    and catching 401 responses to detect expired sessions.
 
-    Every attribute access that returns a callable is wrapped so that
-    `guard.try_consume(user_id)` is called first.  If the guard denies
-    the call, `RateLimitExceededError` is raised before the real Garmin
-    API is touched.
+    Every attribute access that returns a callable is wrapped so that:
+      1. `guard.try_consume(user_id)` is called first — if denied,
+         `RateLimitExceededError` is raised.
+      2. If the real Garmin API returns a 401 (GarminConnectAuthenticationError),
+         the cache entry is invalidated and `GarminSessionExpiredError` is raised
+         with the onboarding URL.
 
     Non-callable attributes (e.g. `garth`) pass through directly.
     """
 
-    def __init__(self, client: Garmin, user_id: str, guard: "ToolCallGuard"):
+    def __init__(
+        self,
+        client: Garmin,
+        user_id: str,
+        guard: "ToolCallGuard",
+        cache: "ClientCache",
+        onboarding_url: str = "",
+    ):
         self._client = client
         self._user_id = user_id
         self._guard = guard
+        self._cache = cache
+        self._onboarding_url = onboarding_url
 
     def __getattr__(self, name: str):
         attr = getattr(self._client, name)
         if not callable(attr):
             return attr
 
-        def _rate_limited(*args, **kwargs):
+        def _guarded(*args, **kwargs):
             from garmin_mcp.auth.throttle import RateLimitExceededError
 
-            # Try sync path first (works in tests and non-async call sites);
-            # fall back to async if an event loop is already running.
+            # Rate-limit check.
             import asyncio
             try:
                 loop = asyncio.get_running_loop()
             except RuntimeError:
-                # No running loop — use sync variant.
                 if not self._guard.try_consume_sync(self._user_id):
                     raise RateLimitExceededError(self._user_id)
+            else:
+                import concurrent.futures
+                future = asyncio.run_coroutine_threadsafe(
+                    self._guard.try_consume(self._user_id), loop
+                )
+                if not future.result():
+                    raise RateLimitExceededError(self._user_id)
+
+            # Call the real Garmin API; catch 401 → session expired.
+            try:
                 return attr(*args, **kwargs)
+            except Exception as exc:
+                if _is_garmin_401(exc):
+                    self._cache.invalidate(self._user_id)
+                    raise GarminSessionExpiredError(
+                        self._user_id, self._onboarding_url
+                    ) from exc
+                raise
 
-            # Running loop — use async variant via run_coroutine_threadsafe
-            # if we're on a different thread, or schedule directly.
-            import concurrent.futures
-            future = asyncio.run_coroutine_threadsafe(
-                self._guard.try_consume(self._user_id), loop
-            )
-            if not future.result():
-                raise RateLimitExceededError(self._user_id)
-            return attr(*args, **kwargs)
+        return _guarded
 
-        return _rate_limited
+
+def _is_garmin_401(exc: Exception) -> bool:
+    """Returns True if the exception indicates a 401 from Garmin."""
+    # GarminConnectAuthenticationError: the garminconnect library raises
+    # this for auth failures. Also check for generic HTTP 401.
+    try:
+        from garminconnect import GarminConnectAuthenticationError
+    except ImportError:
+        GarminConnectAuthenticationError = None  # type: ignore[assignment]
+
+    if GarminConnectAuthenticationError is not None and isinstance(
+        exc, GarminConnectAuthenticationError
+    ):
+        return True
+
+    # garth wraps HTTP errors; check for 401 in any chained exception.
+    status = getattr(exc, 'status', None) or getattr(exc, 'status_code', None)
+    if status == 401:
+        return True
+
+    # Check __cause__ chain for garth.exc.GarthHTTPError with 401.
+    cause = exc.__cause__
+    while cause is not None:
+        cause_status = getattr(cause, 'status', None) or getattr(cause, 'status_code', None)
+        if cause_status == 401:
+            return True
+        # Also check if cause is GarminConnectAuthenticationError
+        if GarminConnectAuthenticationError is not None and isinstance(
+            cause, GarminConnectAuthenticationError
+        ):
+            return True
+        cause = cause.__cause__
+
+    return False
 
 
 _client_cache: Optional[ClientCache] = None

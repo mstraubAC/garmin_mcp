@@ -162,17 +162,31 @@ def test_set_client_cache_replaces_active_cache(storage, token_store):
 # RateLimitedGarminProxy ----------------------------------------------------
 
 
-from garmin_mcp.auth.storage import Storage as StorageCls
 from garmin_mcp.auth.throttle import ToolCallGuard, RateLimitExceededError
-from garmin_mcp.user_context import RateLimitedGarminProxy
+from garmin_mcp.user_context import (
+    GarminSessionExpiredError,
+    RateLimitedGarminProxy,
+)
+
+
+def _make_proxy(storage, client=None, user_id="u1", guard=None, cache=None):
+    """Build a RateLimitedGarminProxy with sensible test defaults."""
+    if client is None:
+        client = MagicMock(name="GarminClient")
+    if guard is None:
+        guard = ToolCallGuard(storage)
+    if cache is None:
+        cache = MagicMock(name="ClientCache")
+    return RateLimitedGarminProxy(
+        client, user_id, guard, cache=cache, onboarding_url="https://example.com/onboard"
+    )
 
 
 def test_proxy_passes_non_callable_attributes(storage):
     """Non-callable attrs (like garth, session, etc.) pass through directly."""
     client = MagicMock(name="GarminClient")
     client.garth = "some_garth_obj"
-    guard = ToolCallGuard(storage)
-    proxy = RateLimitedGarminProxy(client, "u1", guard)
+    proxy = _make_proxy(storage, client=client)
     assert proxy.garth == "some_garth_obj"
 
 
@@ -186,7 +200,7 @@ def test_proxy_blocks_when_rate_limited(storage):
     for _ in range(60):
         guard.try_consume_sync("u1")
 
-    proxy = RateLimitedGarminProxy(client, "u1", guard)
+    proxy = _make_proxy(storage, client=client, guard=guard)
     with pytest.raises(RateLimitExceededError) as exc:
         proxy.get_full_name()
     assert exc.value.user_id == "u1"
@@ -197,11 +211,36 @@ def test_proxy_allows_when_under_limit(storage):
     """Callable methods pass through when rate limit allows."""
     client = MagicMock(name="GarminClient")
     client.get_full_name.return_value = "Alice"
-    guard = ToolCallGuard(storage)
-    proxy = RateLimitedGarminProxy(client, "u1", guard)
+    proxy = _make_proxy(storage, client=client)
     result = proxy.get_full_name()
     assert result == "Alice"
     client.get_full_name.assert_called_once()
+
+
+def test_proxy_invalidates_cache_on_401(storage):
+    """Garmin 401 → cache invalidated, GarminSessionExpiredError raised."""
+    from garminconnect import GarminConnectAuthenticationError
+
+    client = MagicMock(name="GarminClient")
+    client.get_full_name.side_effect = GarminConnectAuthenticationError("401")
+    cache = MagicMock(name="ClientCache")
+    proxy = _make_proxy(storage, client=client, cache=cache)
+
+    with pytest.raises(GarminSessionExpiredError) as exc:
+        proxy.get_full_name()
+    assert exc.value.user_id == "u1"
+    assert "onboard" in exc.value.onboarding_url
+    cache.invalidate.assert_called_once_with("u1")
+
+
+def test_proxy_non_401_exceptions_pass_through(storage):
+    """Non-401 exceptions (e.g. network errors) are re-raised unchanged."""
+    client = MagicMock(name="GarminClient")
+    client.get_full_name.side_effect = ValueError("something else")
+    proxy = _make_proxy(storage, client=client)
+
+    with pytest.raises(ValueError, match="something else"):
+        proxy.get_full_name()
 
 
 def test_cache_wraps_with_proxy_when_guard_set(storage, token_store):
@@ -209,7 +248,10 @@ def test_cache_wraps_with_proxy_when_guard_set(storage, token_store):
     _seed_user_with_token(storage, token_store, "u1", "blob")
     guard = ToolCallGuard(storage)
     cache = MultiUserClientCache(
-        token_store, garmin_factory=_fake_garmin_factory(), tool_call_guard=guard
+        token_store,
+        garmin_factory=_fake_garmin_factory(),
+        tool_call_guard=guard,
+        onboarding_url="https://example.com/onboard",
     )
     client = cache.get_or_load("u1")
     assert isinstance(client, RateLimitedGarminProxy)
