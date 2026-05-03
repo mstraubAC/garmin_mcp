@@ -415,3 +415,116 @@ async def test_get_menstrual_calendar_data_tool(app_with_womens_health, mock_gar
     )
     assert result is not None
     mock_garmin_client.get_menstrual_calendar_data.assert_called_once_with("2024-01-01", "2024-01-31")
+
+
+# Error-case tests (coverage for exception handlers) --------------------------
+
+
+@pytest.mark.asyncio
+async def test_user_profile_error_handling(app_with_user_profile, mock_garmin_client):
+    """Error in user profile tools returns error string, doesn't crash."""
+    mock_garmin_client.get_full_name.side_effect = Exception("API down")
+    result = await app_with_user_profile.call_tool("get_full_name", {})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_unit_system.side_effect = Exception("timeout")
+    result = await app_with_user_profile.call_tool("get_unit_system", {})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_user_summary.side_effect = Exception("boom")
+    result = await app_with_user_profile.call_tool("get_user_profile", {})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_user_settings.side_effect = Exception("fail")
+    result = await app_with_user_profile.call_tool("get_userprofile_settings", {})
+    assert "Error" in str(result)
+
+
+@pytest.mark.asyncio
+async def test_data_error_handling(app_with_data_management, mock_garmin_client):
+    """Error in data tools returns error string."""
+    mock_garmin_client.add_body_composition.side_effect = Exception("fail")
+    result = await app_with_data_management.call_tool("add_body_composition", {
+        "weight": 70, "fat": 15, "hydration": 60, "date": "2024-01-01"
+    })
+    assert "Error" in str(result)
+
+    mock_garmin_client.set_blood_pressure.side_effect = Exception("fail")
+    result = await app_with_data_management.call_tool("set_blood_pressure", {
+        "systolic": 120, "diastolic": 80, "pulse": 72, "date": "2024-01-01"
+    })
+    assert "Error" in str(result)
+
+    mock_garmin_client.add_hydration_data.side_effect = Exception("fail")
+    result = await app_with_data_management.call_tool("add_hydration_data", {
+        "value_in_ml": 500, "cdate": "2024-01-01", "timestamp": "2024-01-01T10:00:00"
+    })
+    assert "Error" in str(result)
+
+
+@pytest.mark.asyncio
+async def test_womens_health_error_handling(app_with_womens_health, mock_garmin_client):
+    """Error in womens_health tools returns error string."""
+    mock_garmin_client.get_pregnancy_summary.side_effect = Exception("fail")
+    result = await app_with_womens_health.call_tool("get_pregnancy_summary", {})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_menstrual_data_for_date.side_effect = Exception("fail")
+    result = await app_with_womens_health.call_tool("get_menstrual_data_for_date", {"date": "2024-01-01"})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_menstrual_calendar_data.side_effect = Exception("fail")
+    result = await app_with_womens_health.call_tool("get_menstrual_calendar_data", {
+        "start_date": "2024-01-01", "end_date": "2024-01-31"
+    })
+    assert "Error" in str(result)
+
+
+@pytest.mark.asyncio
+async def test_gear_error_handling(app_with_gear, mock_garmin_client):
+    """Error in gear tools returns error string."""
+    mock_garmin_client.get_gear.side_effect = Exception("fail")
+    result = await app_with_gear.call_tool("get_gear", {})
+    assert "Error" in str(result)
+
+
+
+
+@pytest.mark.asyncio
+async def test_devices_error_handling(app_with_devices, mock_garmin_client):
+    """Error in device tools returns error string."""
+    mock_garmin_client.get_devices.side_effect = Exception("fail")
+    result = await app_with_devices.call_tool("get_devices", {})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_device_settings.side_effect = Exception("fail")
+    result = await app_with_devices.call_tool("get_device_settings", {"device_id": "abc"})
+    assert "Error" in str(result)
+
+    mock_garmin_client.get_device_last_used.side_effect = Exception("fail")
+    result = await app_with_devices.call_tool("get_device_last_used", {"device_id": "abc"})
+    assert "Error" in str(result)
+
+# Empty-data tests (coverage for "no data found" return paths) ----------------
+
+
+@pytest.mark.asyncio
+async def test_womens_health_empty_data(app_with_womens_health, mock_garmin_client):
+    """Womens health tools return messages when data is empty."""
+    mock_garmin_client.get_pregnancy_summary.side_effect = None
+    mock_garmin_client.get_menstrual_data_for_date.side_effect = None
+    mock_garmin_client.get_menstrual_calendar_data.side_effect = None
+
+    mock_garmin_client.get_pregnancy_summary.return_value = {}
+    result = await app_with_womens_health.call_tool("get_pregnancy_summary", {})
+    assert "No pregnancy" in str(result)
+
+    mock_garmin_client.get_menstrual_data_for_date.return_value = {}
+    result = await app_with_womens_health.call_tool("get_menstrual_data_for_date", {"date": "2024-01-01"})
+    assert "No menstrual data" in str(result)
+
+    mock_garmin_client.get_menstrual_calendar_data.return_value = {}
+    result = await app_with_womens_health.call_tool("get_menstrual_calendar_data", {
+        "start_date": "2024-01-01", "end_date": "2024-01-31"
+    })
+    assert "No menstrual calendar" in str(result)

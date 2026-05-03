@@ -33,11 +33,81 @@ garmin-mcp-verify-audit = "garmin_mcp.maintenance.verify_audit:main"
 [tool.uv]
 dev-dependencies = [
     "asgi-lifespan>=2.1.0",
+    "coverage>=7.13.5",
+    "mypy>=1.20.2",
     "pytest>=9.0.2",
     "pytest-asyncio>=0.25.2",
+    "pytest-cov>=7.1.0",
     "pytest-mock>=3.14.0",
     "pytest-timeout>=2.3.1",
+    "ruff>=0.15.12",
 ]
 
 [tool.uv.sources]
 garmin-mcp = { workspace = true }
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = [".venv", "__pycache__", ".git"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = ["tests/", ".venv/"]
+
+[[tool.mypy.overrides]]
+module = "garminconnect.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "garth.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/garmin_mcp"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+# Target 80% — increment as coverage improves.
+fail_under = 78
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --tb=short"
+testpaths = ["tests/unit", "tests/integration"]
