@@ -26,8 +26,8 @@ param publicUrl string
 @description('Display name shown to users on the consent screen.')
 param displayName string = 'Garmin MCP Server'
 
-@description('Stable, immutable identifier used by Bicep to reconcile the app registration on re-deploys.')
-param uniqueName string = 'garmin-mcp-server'
+@description('Stable, immutable identifier used by Bicep to reconcile the app registration on re-deploys. Must be unique per environment (e.g. ...-prod, ...-dev) so a bare deploy without a parameter file fails loudly instead of clobbering an existing app.')
+param uniqueName string
 
 @description('Object IDs of users explicitly assigned to the app. Empty = all tenant users may sign in (subject to tenant policy).')
 param assignedUserObjectIds array = []
