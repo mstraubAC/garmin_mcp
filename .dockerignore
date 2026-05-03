@@ -1,1 +1,30 @@
-.gitignore
+# Test data + caches that don't belong in the build context
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.venv
+.ruff_cache
+.mypy_cache
+
+# Editor / IDE
+.vscode
+.idea
+.claude
+
+# Local state
+.env
+*.log
+tests/test.log
+
+# Build output
+dist
+build
+*.egg-info
+
+# VCS / docs not needed at runtime
+.git
+.github
+doc
+infra
+deploy

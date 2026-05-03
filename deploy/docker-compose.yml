@@ -1,0 +1,62 @@
+# Two-service stack: the Python MCP server behind a Caddy reverse proxy.
+#
+# Caddy terminates TLS (Let's Encrypt by default) and forwards everything to
+# garmin-mcp on the internal `mcp_internal` network. The MCP container is
+# never bound to a public port directly.
+#
+# State lives in two named volumes:
+#   garmin-mcp-data   SQLite database + audit log
+#   caddy-data        Issued certificates + ACME state
+#
+# First-time setup is in deploy/README.md.
+
+services:
+  garmin-mcp:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: garmin-mcp:local
+    restart: unless-stopped
+    user: "1000:1000"
+    env_file: ${ENV_FILE:-/etc/garmin-mcp/env}
+    networks: [mcp_internal]
+    expose: ["8000"]
+    volumes:
+      - garmin-mcp-data:/var/lib/garmin-mcp
+      - garmin-mcp-logs:/var/log/garmin-mcp
+    # Healthcheck is also defined inside the image so `docker ps` shows it
+    # when run standalone, but compose-level retries+start_period help during
+    # initial boot when the SQLite schema is still being built.
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/healthz').status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    networks: [mcp_internal]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"            # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      garmin-mcp:
+        condition: service_healthy
+
+networks:
+  mcp_internal:
+    driver: bridge
+
+volumes:
+  garmin-mcp-data:
+  garmin-mcp-logs:
+  caddy-data:
+  caddy-config:

@@ -24,9 +24,11 @@ per-user lookup that decrypts each user's stored Garmin tokens.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from contextlib import asynccontextmanager
+from typing import Awaitable, Callable
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
@@ -63,6 +65,7 @@ from garmin_mcp.auth.onboarding_routes import build_routes as build_onboarding_r
 from garmin_mcp.auth.provider import GarminMcpProvider
 from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket
+from garmin_mcp.maintenance.cleanup import cleanup_loop
 from garmin_mcp.user_context import (
     ClientCache,
     MultiUserClientCache,
@@ -158,6 +161,7 @@ def make_app(
     auth_provider: GarminMcpProvider | None = None,
     public_url: str | None = None,
     onboarding_manager: OnboardingManager | None = None,
+    background_task_factories: list[Callable[[], Awaitable[None]]] | None = None,
 ) -> Starlette:
     """Build the ASGI app.
 
@@ -183,8 +187,22 @@ def make_app(
             set_client_cache(client_cache)
         else:
             set_client_cache(SingleUserClientCache(client_provider()))
-        async with mcp.session_manager.run():
-            yield
+
+        bg_tasks: list[asyncio.Task] = [
+            asyncio.create_task(factory())
+            for factory in (background_task_factories or [])
+        ]
+        try:
+            async with mcp.session_manager.run():
+                yield
+        finally:
+            for t in bg_tasks:
+                t.cancel()
+            for t in bg_tasks:
+                try:
+                    await t
+                except (asyncio.CancelledError, Exception):
+                    pass
 
     routes: list = [Route("/healthz", healthz, methods=["GET"])]
     if auth_provider is not None:
@@ -247,6 +265,7 @@ def make_production_app() -> Starlette:
         auth_provider=provider,
         public_url=public_url,
         onboarding_manager=onboarding,
+        background_task_factories=[lambda: cleanup_loop(storage)],
     )
 
 
