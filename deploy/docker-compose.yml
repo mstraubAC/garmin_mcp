@@ -36,7 +36,10 @@ services:
       start_period: 15s
 
   caddy:
-    image: caddy:2
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
+    image: garmin-mcp-caddy:local
     restart: unless-stopped
     networks: [mcp_internal]
     ports:

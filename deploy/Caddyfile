@@ -15,6 +15,19 @@
 garmin-mcp.example.com {
     encode zstd gzip
 
+    # Network-layer rate limit on /register — defense in depth. Stops bot
+    # floods before they reach the application. 10 requests per minute per
+    # IP; bursts up to 15 are allowed then throttled.
+    route /register* {
+        rate_limit {
+            zone dynamic {
+                key {remote_host}
+                events 15
+                window 1m
+            }
+        }
+    }
+
     # Forward the real client IP so the app's per-IP rate limiter doesn't
     # see the docker bridge address as the source of every request.
     request_header X-Forwarded-Proto {scheme}
