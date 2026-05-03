@@ -1,5 +1,4 @@
 """Unit tests for the legacy stdio-mode module (_stdio.py)."""
-import os
 
 import pytest
 
@@ -99,6 +98,7 @@ class TestLoadCredentials:
 class TestMain:
     def test_main_does_not_crash(self, monkeypatch):
         from unittest.mock import MagicMock, patch
+
         mock_mcp = MagicMock()
         mock_run = MagicMock()
         mock_mcp.run = mock_run
@@ -108,6 +108,7 @@ class TestMain:
                 monkeypatch.setattr("garmin_mcp._stdio._password", "secret")
                 try:
                     from garmin_mcp._stdio import main
+
                     main()
                 except SystemExit:
                     pass

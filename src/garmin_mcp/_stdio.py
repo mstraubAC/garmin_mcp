@@ -64,9 +64,7 @@ def _load_credentials() -> tuple[str | None, str | None, str, str, bool]:
     email = os.environ.get("GARMIN_EMAIL")
     email_file = os.environ.get("GARMIN_EMAIL_FILE")
     if email and email_file:
-        raise ValueError(
-            "Must only provide one of GARMIN_EMAIL and GARMIN_EMAIL_FILE, got both"
-        )
+        raise ValueError("Must only provide one of GARMIN_EMAIL and GARMIN_EMAIL_FILE, got both")
     elif email_file and email_file.strip():
         with open(email_file) as ef:
             email = ef.read().rstrip()
