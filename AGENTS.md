@@ -71,6 +71,22 @@ new ADR superseding the relevant one.
 - **Every change in a separate branch with a focused PR.** The rollout
   history (PRs #2 through #8) is the model: each PR delivers one
   cohesive piece, with its own tests and docs in the same diff.
+- **PR descriptions follow the PR #2 template:**
+  ```
+  ## Summary
+  (one paragraph — what this PR does)
+
+  ## Why
+  (motivation / context — what problem does this solve?)
+
+  ## What changed
+  (bullet list of concrete changes — files, new modules, regressions fixed)
+
+  ## Test plan
+  - [ ] (checklist of test scenarios)
+  ```
+  Every PR description must have these four sections. Don't add
+  fluff sections or omit any of them.
 - **Don't add dependencies casually.** The current dep set is small on
   purpose. If you do add one, mention it in the PR description with a
   one-line "why this and not stdlib".
