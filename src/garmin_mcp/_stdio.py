@@ -86,7 +86,7 @@ def _load_credentials() -> tuple[str | None, str | None, str, str, bool]:
 
 
 # Module-level credential loading (for backward compatibility with direct imports).
-_email, _password, _tokenstore, __tokenstore_base64, _is_cn = _load_credentials()
+_email, _password, _tokenstore, _tokenstore_base64, _is_cn = _load_credentials()
 
 
 def init_api(_email, _password):
@@ -122,7 +122,7 @@ def init_api(_email, _password):
         # Session is expired. You'll need to log in again
 
         # Check if we're in a non-interactive environment without credentials
-        if not is_interactive_terminal() and (not email or not password):
+        if not is_interactive_terminal() and (not _email or not _password):
             print(
                 "ERROR: OAuth tokens not found and no interactive terminal available.\n"
                 "Please authenticate first:\n"
@@ -140,7 +140,7 @@ def init_api(_email, _password):
             file=sys.stderr,
         )
         try:
-            garmin = Garmin(email=email, password=password, is_cn=_is_cn, prompt_mfa=get_mfa)
+            garmin = Garmin(email=_email, password=_password, is_cn=_is_cn, prompt_mfa=get_mfa)
             garmin.login()
             # Save Oauth1 and Oauth2 token files to directory for next login
             garmin.garth.dump(_tokenstore)
