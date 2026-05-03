@@ -4,7 +4,6 @@ Challenges and badges functions for Garmin Connect MCP Server
 
 import datetime
 import json
-from typing import Any
 
 from garmin_mcp.user_context import get_garmin_client
 

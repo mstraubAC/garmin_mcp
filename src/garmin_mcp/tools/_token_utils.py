@@ -1,4 +1,3 @@
-from typing import Optional
 """Token management utilities for Garmin MCP authentication."""
 
 import os
@@ -26,7 +25,7 @@ def get_token_base64_path() -> str:
     return os.getenv("GARMINTOKENS_BASE64") or "~/.garminconnect_base64"
 
 
-def token_exists(token_path: Optional[str] = None) -> bool:
+def token_exists(token_path: str | None = None) -> bool:
     """Check if token directory or file exists.
 
     Args:
@@ -42,7 +41,7 @@ def token_exists(token_path: Optional[str] = None) -> bool:
     return expanded_path.exists()
 
 
-def validate_tokens(token_path: Optional[str] = None, is_cn: bool = False) -> tuple[bool, str]:
+def validate_tokens(token_path: str | None = None, is_cn: bool = False) -> tuple[bool, str]:
     """Validate tokens by attempting to use them.
 
     Args:
@@ -107,7 +106,7 @@ def validate_tokens(token_path: Optional[str] = None, is_cn: bool = False) -> tu
         sys.stderr = old_stderr
 
 
-def remove_tokens(token_path: Optional[str] = None, base64_path: Optional[str] = None) -> None:
+def remove_tokens(token_path: str | None = None, base64_path: str | None = None) -> None:
     """Safely remove stored tokens.
 
     Args:
@@ -135,7 +134,7 @@ def remove_tokens(token_path: Optional[str] = None, base64_path: Optional[str] =
         expanded_base64_path.unlink()
 
 
-def get_token_info(token_path: Optional[str] = None, is_cn: bool = False) -> dict:
+def get_token_info(token_path: str | None = None, is_cn: bool = False) -> dict:
     """Get information about stored tokens.
 
     Args:

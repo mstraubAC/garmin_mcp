@@ -4,7 +4,6 @@ Health & Wellness Data functions for Garmin Connect MCP Server
 
 import datetime
 import json
-from typing import Optional
 
 from garmin_mcp.user_context import get_garmin_client
 
@@ -101,7 +100,7 @@ def register_tools(app):
             return f"Error retrieving user summary: {str(e)}"
 
     @app.tool()
-    async def get_body_composition(start_date: str, end_date: Optional[str] = None) -> str:
+    async def get_body_composition(start_date: str, end_date: str | None = None) -> str:
         """Get body composition data for a single date or date range
 
         Args:
