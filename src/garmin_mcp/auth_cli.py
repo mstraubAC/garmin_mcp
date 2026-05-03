@@ -9,7 +9,7 @@ import getpass
 import os
 import sys
 
-import requests
+import requests  # type: ignore[import-untyped]
 from garminconnect import Garmin, GarminConnectAuthenticationError
 from garth.exc import GarthHTTPError
 

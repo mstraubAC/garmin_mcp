@@ -165,7 +165,7 @@ def build_routes(
         form = await request.form()
         ticket = (form.get("ticket") or "").strip()
         email = (form.get("email") or "").strip()
-        password = form.get("password") or ""
+        password: str = form.get("password") or "" or ""
         if not all([ticket, email, password]):
             return HTMLResponse(
                 _panel_html(OnboardingState.NEW, ticket, "All fields are required."),

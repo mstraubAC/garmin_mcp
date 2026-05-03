@@ -4,6 +4,7 @@ Challenges and badges functions for Garmin Connect MCP Server
 
 import datetime
 import json
+from typing import Any
 
 from garmin_mcp.user_context import get_garmin_client
 
@@ -127,7 +128,7 @@ def _format_timestamp(timestamp_ms: int) -> str:
 def _parse_iso_date(iso_string: str) -> str:
     """Extract just the date part from an ISO datetime string"""
     if not iso_string:
-        return None
+        return ""
     # Handle formats like "2024-03-31T18:55:47.534" or "2024-03-31T18:55:47.0"
     return iso_string.split("T")[0] if "T" in iso_string else iso_string
 
@@ -157,7 +158,7 @@ def _format_badge_value(value: float, unit_id: int) -> str:
 def _calculate_progress_percent(progress: float, target: float) -> str:
     """Calculate progress percentage"""
     if progress is None or target is None or target == 0:
-        return None
+        return ""
     percent = (progress / target) * 100
     return f"{min(percent, 100):.1f}%"
 
