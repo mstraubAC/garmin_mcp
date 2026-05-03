@@ -15,15 +15,17 @@ oauth_codes            Our own auth codes issued to Claude after Entra auth
 refresh_tokens         Long-lived refresh tokens we issue
 users                  Entra subject -> internal user_id mapping
 """
+
 from __future__ import annotations
 
 import json
 import sqlite3
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 SCHEMA_VERSION = 2
 
@@ -122,9 +124,7 @@ class Storage:
         self.db_path = str(db_path)
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
-        self._conn = sqlite3.connect(
-            self.db_path, check_same_thread=False, isolation_level=None
-        )
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False, isolation_level=None)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode = WAL")
         self._conn.execute("PRAGMA synchronous = NORMAL")
@@ -159,9 +159,7 @@ class Storage:
             # EXISTS makes this idempotent for both fresh DBs and v1 → v2
             # upgrades (we only add tables; never alter existing columns).
             self._conn.executescript(_DDL)
-            row = self._conn.execute(
-                "SELECT version FROM schema_version"
-            ).fetchone()
+            row = self._conn.execute("SELECT version FROM schema_version").fetchone()
             if row is None:
                 self._conn.execute(
                     "INSERT INTO schema_version(version) VALUES (?)",
@@ -170,9 +168,7 @@ class Storage:
             elif row["version"] < SCHEMA_VERSION:
                 # Forward-compat upgrade — DDL above already created any
                 # missing tables, so just record the new version.
-                self._conn.execute(
-                    "UPDATE schema_version SET version = ?", (SCHEMA_VERSION,)
-                )
+                self._conn.execute("UPDATE schema_version SET version = ?", (SCHEMA_VERSION,))
             elif row["version"] > SCHEMA_VERSION:
                 raise RuntimeError(
                     f"schema version too new: db={row['version']} code={SCHEMA_VERSION}"
@@ -290,9 +286,7 @@ class Storage:
             ).fetchone()
             if row is None:
                 return None
-            conn.execute(
-                "DELETE FROM pending_authorizations WHERE state = ?", (state,)
-            )
+            conn.execute("DELETE FROM pending_authorizations WHERE state = ?", (state,))
             if row["expires_at"] < now:
                 return None
             return {
@@ -302,9 +296,7 @@ class Storage:
                 "claude_state": row["claude_state"],
                 "code_challenge": row["code_challenge"],
                 "code_challenge_method": row["code_challenge_method"],
-                "redirect_uri_provided_explicitly": bool(
-                    row["redirect_uri_provided_explicitly"]
-                ),
+                "redirect_uri_provided_explicitly": bool(row["redirect_uri_provided_explicitly"]),
                 "scopes": json.loads(row["scopes"]),
                 "resource": row["resource"],
             }
@@ -352,9 +344,7 @@ class Storage:
             )
 
     def load_authorization_code(self, code: str) -> dict[str, Any] | None:
-        row = self._conn.execute(
-            "SELECT * FROM oauth_codes WHERE code = ?", (code,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM oauth_codes WHERE code = ?", (code,)).fetchone()
         if row is None or row["expires_at"] < _now_seconds():
             return None
         return {
@@ -362,9 +352,7 @@ class Storage:
             "client_id": row["client_id"],
             "user_id": row["user_id"],
             "redirect_uri": row["redirect_uri"],
-            "redirect_uri_provided_explicitly": bool(
-                row["redirect_uri_provided_explicitly"]
-            ),
+            "redirect_uri_provided_explicitly": bool(row["redirect_uri_provided_explicitly"]),
             "code_challenge": row["code_challenge"],
             "scopes": json.loads(row["scopes"]),
             "resource": row["resource"],
@@ -373,9 +361,7 @@ class Storage:
 
     def consume_authorization_code(self, code: str) -> dict[str, Any] | None:
         with self._tx() as conn:
-            row = conn.execute(
-                "SELECT * FROM oauth_codes WHERE code = ?", (code,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM oauth_codes WHERE code = ?", (code,)).fetchone()
             if row is None:
                 return None
             conn.execute("DELETE FROM oauth_codes WHERE code = ?", (code,))
@@ -386,9 +372,7 @@ class Storage:
                 "client_id": row["client_id"],
                 "user_id": row["user_id"],
                 "redirect_uri": row["redirect_uri"],
-                "redirect_uri_provided_explicitly": bool(
-                    row["redirect_uri_provided_explicitly"]
-                ),
+                "redirect_uri_provided_explicitly": bool(row["redirect_uri_provided_explicitly"]),
                 "code_challenge": row["code_challenge"],
                 "scopes": json.loads(row["scopes"]),
                 "resource": row["resource"],

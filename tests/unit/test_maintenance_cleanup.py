@@ -1,4 +1,5 @@
 """Unit tests for the periodic SQLite cleanup task."""
+
 import asyncio
 import time
 
@@ -36,11 +37,27 @@ async def test_tick_once_drops_old_unused_clients(storage):
 
 async def test_tick_once_drops_expired_pending(storage):
     storage.store_pending_authorization(
-        "exp", "c", "https://x/cb", None, "x", "S256", False, [], None,
+        "exp",
+        "c",
+        "https://x/cb",
+        None,
+        "x",
+        "S256",
+        False,
+        [],
+        None,
         ttl_seconds=-1,
     )
     storage.store_pending_authorization(
-        "ok", "c", "https://x/cb", None, "x", "S256", False, [], None,
+        "ok",
+        "c",
+        "https://x/cb",
+        None,
+        "x",
+        "S256",
+        False,
+        [],
+        None,
         ttl_seconds=600,
     )
     counts = await tick_once(storage)

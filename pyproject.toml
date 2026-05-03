@@ -47,3 +47,44 @@ garmin-mcp = { workspace = true }
 [tool.bandit]
 exclude_dirs = [".venv", "tests", "__pycache__", ".git"]
 skips = ["B101", "B311"]  # B101=assert (tests use it), B311=random (not cryptographic)
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = [".venv", "__pycache__", ".git"]
+
+[tool.ruff.lint]
+per-file-ignores = {"src/garmin_mcp/__init__.py" = ["F401"]}
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501", "B008", "B904"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+ignore_missing_imports = true
+exclude = ["tests/", ".venv/", "src/garmin_mcp/__init__.py"]
+
+[[tool.mypy.overrides]]
+module = "garminconnect.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "garth.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "mcp.*"
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/garmin_mcp"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+fail_under = 78
+show_missing = true

@@ -3,22 +3,22 @@ Integration tests for training module MCP tools
 
 Tests all 8 training tools using FastMCP integration with mocked Garmin API responses.
 """
-import pytest
-from unittest.mock import Mock
-from mcp.server.fastmcp import FastMCP
 
 import json
 
+import pytest
+from mcp.server.fastmcp import FastMCP
+
 from garmin_mcp.tools import training
-from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
+from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
 from tests.fixtures.garmin_responses import (
-    MOCK_PROGRESS_SUMMARY,
+    MOCK_ACTIVITY_TYPES,
+    MOCK_ENDURANCE_SCORE,
     MOCK_HRV_DATA,
-    MOCK_TRAINING_STATUS,
     MOCK_LACTATE_THRESHOLD,
     MOCK_LACTATE_THRESHOLD_RANGE,
-    MOCK_ENDURANCE_SCORE,
-    MOCK_ACTIVITY_TYPES,
+    MOCK_PROGRESS_SUMMARY,
+    MOCK_TRAINING_STATUS,
 )
 
 
@@ -40,11 +40,7 @@ async def test_get_progress_summary_between_dates_tool(app_with_training, mock_g
     # Call tool
     result = await app_with_training.call_tool(
         "get_progress_summary_between_dates",
-        {
-            "start_date": "2024-01-08",
-            "end_date": "2024-01-15",
-            "metric": "duration"
-        }
+        {"start_date": "2024-01-08", "end_date": "2024-01-15", "metric": "duration"},
     )
 
     # Verify
@@ -60,14 +56,13 @@ async def test_get_hill_score_tool(app_with_training, mock_garmin_client):
     # Setup mock
     hill_score = {
         "hillScore": 75,
-        "dateRange": {"start": "2024-01-08", "end": "2024-01-15"}
+        "dateRange": {"start": "2024-01-08", "end": "2024-01-15"},
     }
     mock_garmin_client.get_hill_score.return_value = hill_score
 
     # Call tool
     result = await app_with_training.call_tool(
-        "get_hill_score",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_hill_score", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify
@@ -87,8 +82,7 @@ async def test_get_endurance_score_tool(app_with_training, mock_garmin_client):
 
     # Call tool
     result = await app_with_training.call_tool(
-        "get_endurance_score",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_endurance_score", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify API was called correctly
@@ -119,17 +113,13 @@ async def test_get_endurance_score_tool(app_with_training, mock_garmin_client):
     assert len(contributors) == 4
 
     # Find the hiking contributor
-    hiking_contributor = next(
-        (c for c in contributors if c.get("activity_type") == "hiking"), None
-    )
+    hiking_contributor = next((c for c in contributors if c.get("activity_type") == "hiking"), None)
     assert hiking_contributor is not None
     assert hiking_contributor["contribution_percent"] == 5.49
     assert hiking_contributor["activity_type_id"] == 3
 
     # Find the yoga contributor
-    yoga_contributor = next(
-        (c for c in contributors if c.get("activity_type") == "yoga"), None
-    )
+    yoga_contributor = next((c for c in contributors if c.get("activity_type") == "yoga"), None)
     assert yoga_contributor is not None
     assert yoga_contributor["contribution_percent"] == 3.13
 
@@ -159,10 +149,7 @@ async def test_get_training_effect_tool(app_with_training, mock_garmin_client):
     mock_garmin_client.get_activity.return_value = activity_data
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "get_training_effect",
-        {"activity_id": 12345678901}
-    )
+    result = await app_with_training.call_tool("get_training_effect", {"activity_id": 12345678901})
 
     # Verify
     assert result is not None
@@ -176,10 +163,7 @@ async def test_get_hrv_data_tool(app_with_training, mock_garmin_client):
     mock_garmin_client.get_hrv_data.return_value = MOCK_HRV_DATA
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "get_hrv_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_training.call_tool("get_hrv_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -194,15 +178,12 @@ async def test_get_fitnessage_data_tool(app_with_training, mock_garmin_client):
         "fitnessAge": 25,
         "chronologicalAge": 30,
         "vo2Max": 52.5,
-        "date": "2024-01-15"
+        "date": "2024-01-15",
     }
     mock_garmin_client.get_fitnessage_data.return_value = fitness_age
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "get_fitnessage_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_training.call_tool("get_fitnessage_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -217,10 +198,7 @@ async def test_request_reload_tool(app_with_training, mock_garmin_client):
     mock_garmin_client.request_reload.return_value = reload_response
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "request_reload",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_training.call_tool("request_reload", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -234,10 +212,7 @@ async def test_get_training_status_tool(app_with_training, mock_garmin_client):
     mock_garmin_client.get_training_status.return_value = MOCK_TRAINING_STATUS
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "get_training_status",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_training.call_tool("get_training_status", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -251,10 +226,7 @@ async def test_get_lactate_threshold_tool_latest(app_with_training, mock_garmin_
     mock_garmin_client.get_lactate_threshold.return_value = MOCK_LACTATE_THRESHOLD
 
     # Call tool with no dates (gets latest)
-    result = await app_with_training.call_tool(
-        "get_lactate_threshold",
-        {}
-    )
+    result = await app_with_training.call_tool("get_lactate_threshold", {})
 
     # Verify API call
     assert result is not None
@@ -277,8 +249,7 @@ async def test_get_lactate_threshold_tool_range(app_with_training, mock_garmin_c
 
     # Call tool with date range
     result = await app_with_training.call_tool(
-        "get_lactate_threshold",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_lactate_threshold", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify API call
@@ -309,10 +280,7 @@ async def test_get_hrv_data_no_data(app_with_training, mock_garmin_client):
     mock_garmin_client.get_hrv_data.return_value = None
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "get_hrv_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_training.call_tool("get_hrv_data", {"date": "2024-01-15"})
 
     # Verify error message is returned
     assert result is not None
@@ -325,10 +293,7 @@ async def test_get_training_effect_exception(app_with_training, mock_garmin_clie
     mock_garmin_client.get_activity.side_effect = Exception("API Error")
 
     # Call tool
-    result = await app_with_training.call_tool(
-        "get_training_effect",
-        {"activity_id": 12345678901}
-    )
+    result = await app_with_training.call_tool("get_training_effect", {"activity_id": 12345678901})
 
     # Verify error is handled gracefully
     assert result is not None

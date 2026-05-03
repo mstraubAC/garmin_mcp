@@ -30,8 +30,11 @@ jobs:
       run: uv sync
 
     - name: Run integration tests
-      run: uv run pytest tests/integration tests/unit -v --tb=short
+      run: uv run coverage run -m pytest tests/integration tests/unit -v --tb=short
       timeout-minutes: 5
+
+    - name: Check coverage threshold
+      run: uv run coverage report --fail-under=78
 
     - name: Test summary
       if: always()

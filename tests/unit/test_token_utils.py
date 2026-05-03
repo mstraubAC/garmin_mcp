@@ -3,17 +3,15 @@
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-
-import pytest
+from unittest.mock import Mock, patch
 
 from garmin_mcp.tools._token_utils import (
-    get_token_path,
     get_token_base64_path,
+    get_token_info,
+    get_token_path,
+    remove_tokens,
     token_exists,
     validate_tokens,
-    remove_tokens,
-    get_token_info,
 )
 
 
@@ -68,9 +66,11 @@ class TestTokenExists:
 
     def test_uses_default_path(self):
         """Test that default path is used when none provided."""
-        with patch("garmin_mcp.tools._token_utils.get_token_path", return_value="/test/path"):
-            with patch("pathlib.Path.exists", return_value=True):
-                assert token_exists() is True
+        with (
+            patch("garmin_mcp.tools._token_utils.get_token_path", return_value="/test/path"),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            assert token_exists() is True
 
 
 class TestValidateTokens:

@@ -6,26 +6,27 @@ import os
 import sys
 
 import requests
+from garminconnect import Garmin, GarminConnectAuthenticationError
+from garth.exc import GarthHTTPError
 from mcp.server.fastmcp import FastMCP
 
-from garth.exc import GarthHTTPError
-from garminconnect import Garmin, GarminConnectAuthenticationError
-
 # Import all modules
-from garmin_mcp.tools import activities
-from garmin_mcp.tools import health
-from garmin_mcp.tools import user_profile
-from garmin_mcp.tools import devices
-from garmin_mcp.tools import gear
-from garmin_mcp.tools import weight
-from garmin_mcp.tools import challenges
-from garmin_mcp.tools import training
-from garmin_mcp.tools import workouts
-from garmin_mcp.tools import workout_templates
-from garmin_mcp.tools import data
-from garmin_mcp.tools import womens_health
-from garmin_mcp.tools import nutrition
-from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
+from garmin_mcp.tools import (
+    activities,
+    challenges,
+    data,
+    devices,
+    gear,
+    health,
+    nutrition,
+    training,
+    user_profile,
+    weight,
+    womens_health,
+    workout_templates,
+    workouts,
+)
+from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
 
 
 def is_interactive_terminal() -> bool:
@@ -63,21 +64,17 @@ def get_mfa() -> str:
 email = os.environ.get("GARMIN_EMAIL")
 email_file = os.environ.get("GARMIN_EMAIL_FILE")
 if email and email_file:
-    raise ValueError(
-        "Must only provide one of GARMIN_EMAIL and GARMIN_EMAIL_FILE, got both"
-    )
+    raise ValueError("Must only provide one of GARMIN_EMAIL and GARMIN_EMAIL_FILE, got both")
 elif email_file:
-    with open(email_file, "r") as email_file:
+    with open(email_file) as email_file:
         email = email_file.read().rstrip()
 
 password = os.environ.get("GARMIN_PASSWORD")
 password_file = os.environ.get("GARMIN_PASSWORD_FILE")
 if password and password_file:
-    raise ValueError(
-        "Must only provide one of GARMIN_PASSWORD and GARMIN_PASSWORD_FILE, got both"
-    )
+    raise ValueError("Must only provide one of GARMIN_PASSWORD and GARMIN_PASSWORD_FILE, got both")
 elif password_file:
-    with open(password_file, "r") as password_file:
+    with open(password_file) as password_file:
         password = password_file.read().rstrip()
 
 tokenstore = os.getenv("GARMINTOKENS") or "~/.garminconnect"
@@ -136,9 +133,7 @@ def init_api(email, password):
             file=sys.stderr,
         )
         try:
-            garmin = Garmin(
-                email=email, password=password, is_cn=is_cn, prompt_mfa=get_mfa
-            )
+            garmin = Garmin(email=email, password=password, is_cn=is_cn, prompt_mfa=get_mfa)
             garmin.login()
             # Save Oauth1 and Oauth2 token files to directory for next login
             garmin.garth.dump(tokenstore)
@@ -178,9 +173,7 @@ def init_api(email, password):
                         file=sys.stderr,
                     )
                 elif "429" in error_msg:
-                    print(
-                        "Too many requests. Please wait and try again.", file=sys.stderr
-                    )
+                    print("Too many requests. Please wait and try again.", file=sys.stderr)
                 elif "500" in error_msg or "503" in error_msg:
                     print(
                         "Garmin Connect service issue. Please try again later.",
@@ -194,7 +187,7 @@ def init_api(email, password):
                 print(f"Error: {error_msg.split(':')[0]}", file=sys.stderr)
 
             print(
-                f"\nTip: Run 'garmin-mcp-auth' to authenticate interactively.",
+                "\nTip: Run 'garmin-mcp-auth' to authenticate interactively.",
                 file=sys.stderr,
             )
             return None
@@ -221,16 +214,16 @@ def main():
     app = FastMCP("Garmin Connect v1.0")
 
     # Register tools from all modules
-    app = activity_management.register_tools(app)
-    app = health_wellness.register_tools(app)
+    app = activities.register_tools(app)
+    app = health.register_tools(app)
     app = user_profile.register_tools(app)
     app = devices.register_tools(app)
-    app = gear_management.register_tools(app)
-    app = weight_management.register_tools(app)
+    app = gear.register_tools(app)
+    app = weight.register_tools(app)
     app = challenges.register_tools(app)
     app = training.register_tools(app)
     app = workouts.register_tools(app)
-    app = data_management.register_tools(app)
+    app = data.register_tools(app)
     app = womens_health.register_tools(app)
     app = nutrition.register_tools(app)
 

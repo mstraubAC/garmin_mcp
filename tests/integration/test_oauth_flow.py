@@ -9,6 +9,7 @@ The MCP-over-HTTP round trip with a real uvicorn lives in test_http_server.py;
 keeping it isolated avoids the asyncio cross-loop issues that surface when
 two uvicorn-backed tests run in the same pytest process.
 """
+
 from __future__ import annotations
 
 import time
@@ -30,7 +31,6 @@ from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket
 from garmin_mcp.server import make_app
 
-
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ENTRA_CLIENT_ID = "test-entra-app-id"
 ENTRA_CLIENT_SECRET = "shhh"
@@ -42,6 +42,7 @@ PUBLIC_URL = "https://garmin-mcp.example.com"
 
 def _b64url_uint(i: int) -> str:
     import base64
+
     b = i.to_bytes((i.bit_length() + 7) // 8, "big")
     return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
 
@@ -76,21 +77,36 @@ def _fake_entra_transport(public_key, id_token: str) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         path = request.url.path
         if path.endswith("/.well-known/openid-configuration"):
-            return httpx.Response(200, json={
-                "authorization_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize",
-                "token_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
-                "jwks_uri": f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys",
-                "issuer": f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "authorization_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize",
+                    "token_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
+                    "jwks_uri": f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys",
+                    "issuer": f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",
+                },
+            )
         if path.endswith("/discovery/v2.0/keys"):
             nums = public_key.public_numbers()
-            return httpx.Response(200, json={"keys": [{
-                "kty": "RSA", "use": "sig", "alg": "RS256", "kid": "test-kid",
-                "n": _b64url_uint(nums.n), "e": _b64url_uint(nums.e),
-            }]})
+            return httpx.Response(
+                200,
+                json={
+                    "keys": [
+                        {
+                            "kty": "RSA",
+                            "use": "sig",
+                            "alg": "RS256",
+                            "kid": "test-kid",
+                            "n": _b64url_uint(nums.n),
+                            "e": _b64url_uint(nums.e),
+                        }
+                    ]
+                },
+            )
         if path.endswith("/oauth2/v2.0/token"):
             return httpx.Response(200, json={"id_token": id_token, "access_token": "x"})
         return httpx.Response(404)
+
     return httpx.MockTransport(handler)
 
 
@@ -240,11 +256,15 @@ async def test_full_oauth_flow_yields_valid_jwt(oauth_app):
         client_id = resp.json()["client_id"]
 
         # 2. PKCE
-        import base64, hashlib, secrets
+        import base64
+        import hashlib
+        import secrets
+
         verifier = secrets.token_urlsafe(64)
         challenge = (
             base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
-            .decode().rstrip("=")
+            .decode()
+            .rstrip("=")
         )
 
         # 3. /authorize → redirect to Entra

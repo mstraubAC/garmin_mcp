@@ -13,6 +13,7 @@ Runs in-process as an asyncio background task started by the lifespan
 Failures are logged but never raise — keeping the cleanup tick resilient
 matters more than catching every error.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,9 +23,9 @@ from garmin_mcp.auth.storage import Storage
 
 log = logging.getLogger(__name__)
 
-DEFAULT_INTERVAL_SECONDS = 3600                 # 1 hour
-DEFAULT_NEVER_USED_AFTER = 24 * 3600            # 1 day
-DEFAULT_IDLE_AFTER = 90 * 24 * 3600             # 90 days
+DEFAULT_INTERVAL_SECONDS = 3600  # 1 hour
+DEFAULT_NEVER_USED_AFTER = 24 * 3600  # 1 day
+DEFAULT_IDLE_AFTER = 90 * 24 * 3600  # 90 days
 
 
 async def cleanup_loop(

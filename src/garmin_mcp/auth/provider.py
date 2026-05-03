@@ -14,6 +14,7 @@ Bridges Claude clients (which speak DCR + OAuth) to Microsoft Entra ID
     Claude → /mcp (Bearer JWT)     → TokenVerifier validates our JWT (separate
                                       module)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -77,9 +78,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
         # Both being None is the legacy single-Garmin-account mode used in
         # Step 4 (every authenticated user shares one Garmin login).
         if (garmin_tokens is None) != (onboarding is None):
-            raise ValueError(
-                "garmin_tokens and onboarding must be provided together"
-            )
+            raise ValueError("garmin_tokens and onboarding must be provided together")
         self.storage = storage
         self.entra = entra
         self.jwt_signer = jwt_signer
@@ -325,9 +324,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
         token_hash = _hash_token(refresh_token.token)
         row = self.storage.load_refresh_token(token_hash)
         if row is None or row["client_id"] != client.client_id:
-            raise TokenError(
-                error="invalid_grant", error_description="unknown refresh token"
-            )
+            raise TokenError(error="invalid_grant", error_description="unknown refresh token")
         # Rotate: revoke the old token, issue a fresh pair.
         self.storage.revoke_refresh_token(token_hash)
 
@@ -373,9 +370,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
 
     # Helpers --------------------------------------------------------------
 
-    def _mint_token_pair(
-        self, client_id: str, user_id: str, scopes: list[str]
-    ) -> OAuthToken:
+    def _mint_token_pair(self, client_id: str, user_id: str, scopes: list[str]) -> OAuthToken:
         access = self.jwt_signer.issue(
             user_id=user_id,
             client_id=client_id,

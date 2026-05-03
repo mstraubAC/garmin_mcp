@@ -1,16 +1,16 @@
 """
 Nutrition/food logging functions for Garmin Connect MCP Server
 """
+
 import json
 import re
-from typing import Optional
 from urllib.parse import quote
 
 from garth.exc import GarthHTTPError
 
 from garmin_mcp.user_context import get_garmin_client
 
-_DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _validate_date(date: str) -> None:
@@ -142,15 +142,15 @@ def register_tools(app):
         calories: float,
         serving_unit: str = "G",
         number_of_units: float = 100,
-        carbs: Optional[float] = None,
-        protein: Optional[float] = None,
-        fat: Optional[float] = None,
-        fiber: Optional[float] = None,
-        sugar: Optional[float] = None,
-        saturated_fat: Optional[float] = None,
-        sodium: Optional[float] = None,
-        cholesterol: Optional[float] = None,
-        potassium: Optional[float] = None,
+        carbs: float | None = None,
+        protein: float | None = None,
+        fat: float | None = None,
+        fiber: float | None = None,
+        sugar: float | None = None,
+        saturated_fat: float | None = None,
+        sodium: float | None = None,
+        cholesterol: float | None = None,
+        potassium: float | None = None,
     ) -> str:
         """Create a custom food in the user's Garmin nutrition library
 
@@ -205,9 +205,7 @@ def register_tools(app):
                 "nutritionContents": [nutrition],
             }
             url = "/nutrition-service/customFood"
-            resp = get_garmin_client().garth.put(
-                "connectapi", url, json=payload, api=True
-            )
+            resp = get_garmin_client().garth.put("connectapi", url, json=payload, api=True)
             if resp.status_code == 204:
                 return "Custom food created (no response data returned)."
             return json.dumps(resp.json(), indent=2)
@@ -227,15 +225,15 @@ def register_tools(app):
         calories: float,
         serving_unit: str = "G",
         number_of_units: float = 100,
-        carbs: Optional[float] = None,
-        protein: Optional[float] = None,
-        fat: Optional[float] = None,
-        fiber: Optional[float] = None,
-        sugar: Optional[float] = None,
-        saturated_fat: Optional[float] = None,
-        sodium: Optional[float] = None,
-        cholesterol: Optional[float] = None,
-        potassium: Optional[float] = None,
+        carbs: float | None = None,
+        protein: float | None = None,
+        fat: float | None = None,
+        fiber: float | None = None,
+        sugar: float | None = None,
+        saturated_fat: float | None = None,
+        sodium: float | None = None,
+        cholesterol: float | None = None,
+        potassium: float | None = None,
     ) -> str:
         """Update an existing custom food in the user's Garmin nutrition library
 
@@ -293,9 +291,7 @@ def register_tools(app):
                 "nutritionContents": [nutrition],
             }
             url = "/nutrition-service/customFood"
-            resp = get_garmin_client().garth.put(
-                "connectapi", url, json=payload, api=True
-            )
+            resp = get_garmin_client().garth.put("connectapi", url, json=payload, api=True)
             if resp.status_code == 204:
                 return "Custom food updated (no response data returned)."
             return json.dumps(resp.json(), indent=2)
@@ -333,9 +329,7 @@ def register_tools(app):
         try:
             from datetime import datetime, timezone
 
-            log_timestamp = datetime.now(timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%S.000Z"
-            )
+            log_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
             payload = {
                 "mealDate": meal_date,
                 "foodLogItems": [
@@ -356,9 +350,7 @@ def register_tools(app):
                 ],
             }
             url = "/nutrition-service/food/logs"
-            resp = get_garmin_client().garth.put(
-                "connectapi", url, json=payload, api=True
-            )
+            resp = get_garmin_client().garth.put("connectapi", url, json=payload, api=True)
             if resp.status_code == 204:
                 return "Food logged successfully."
             return json.dumps(resp.json(), indent=2)

@@ -1,4 +1,5 @@
 """Unit tests for the encrypted Garmin token store."""
+
 import pytest
 from cryptography.fernet import Fernet
 
@@ -106,7 +107,9 @@ def test_token_persists_across_storage_reopens(tmp_path, fernet_key):
 
 def test_storage_user_table_extension():
     """Smoke check: the new garmin_tokens table is created at v2 schema."""
-    import tempfile, os
+    import os
+    import tempfile
+
     with tempfile.TemporaryDirectory() as tmp:
         s = Storage(os.path.join(tmp, "state.db"))
         # Should not raise

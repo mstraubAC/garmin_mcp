@@ -1,4 +1,5 @@
 """Unit tests for the Fernet data-key rotation CLI."""
+
 import sqlite3
 
 import pytest

@@ -10,14 +10,15 @@ We deliberately keep the HTML inline (no template engine) — the surface is
 small enough that adding jinja2 doesn't pay back, and the strings here are
 the entirety of the user-visible UI.
 """
+
 from __future__ import annotations
 
 import html
 import logging
-from typing import Awaitable, Callable
+from collections.abc import Callable
 
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse, Response
+from starlette.responses import HTMLResponse, Response
 from starlette.routing import Route
 
 from garmin_mcp.auth.onboarding import (
@@ -88,8 +89,7 @@ def _panel_html(state: OnboardingState, ticket: str, error: str | None = None) -
         body = _credentials_form(ticket, error)
     elif state == OnboardingState.AUTHENTICATING:
         body = (
-            "<h1>Signing in to Garmin…</h1>"
-            "<p class=\"muted\">This usually takes a few seconds.</p>"
+            '<h1>Signing in to Garmin…</h1><p class="muted">This usually takes a few seconds.</p>'
         )
     elif state == OnboardingState.AWAITING_MFA:
         err = f'<p class="err">{html.escape(error)}</p>' if error else ""
@@ -107,8 +107,8 @@ def _panel_html(state: OnboardingState, ticket: str, error: str | None = None) -
     elif state == OnboardingState.COMPLETE:
         body = (
             '<h1 class="ok">All set!</h1>'
-            '<p>Redirecting you back to Claude…</p>'
-            '<script>window.location.href = window.__redirect_url;</script>'
+            "<p>Redirecting you back to Claude…</p>"
+            "<script>window.location.href = window.__redirect_url;</script>"
         )
     elif state == OnboardingState.FAILED:
         body = f"""<h1>Onboarding failed</h1>
@@ -125,7 +125,8 @@ sign-in link from Claude to start over.</p>"""
     poll = (
         f' hx-get="/onboard/status?ticket={html.escape(ticket)}" '
         f'hx-trigger="every 1s" hx-swap="outerHTML"'
-        if needs_poll else ""
+        if needs_poll
+        else ""
     )
     return f'<div id="panel"{poll}>{body}</div>'
 
@@ -151,9 +152,9 @@ def build_routes(
         if session is None:
             return HTMLResponse(
                 _layout(
-                    '<h1>Unknown onboarding ticket</h1>'
+                    "<h1>Unknown onboarding ticket</h1>"
                     '<p class="err">This link is invalid or has been used. '
-                    'Re-start sign-in from Claude.</p>'
+                    "Re-start sign-in from Claude.</p>"
                 ),
                 status_code=404,
             )

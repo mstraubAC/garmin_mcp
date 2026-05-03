@@ -2,9 +2,8 @@
 Challenges and badges functions for Garmin Connect MCP Server
 """
 
-import json
 import datetime
-from typing import Any, Dict, List, Optional, Union
+import json
 
 from garmin_mcp.user_context import get_garmin_client
 
@@ -300,9 +299,7 @@ def register_tools(app):
 
                 curated_badge = {
                     "name": badge.get("badgeName"),
-                    "category": BADGE_CATEGORY_MAPPING.get(
-                        category_id, f"category_{category_id}"
-                    ),
+                    "category": BADGE_CATEGORY_MAPPING.get(category_id, f"category_{category_id}"),
                     "difficulty": BADGE_DIFFICULTY_MAPPING.get(
                         difficulty_id, f"level_{difficulty_id}"
                     ),
@@ -322,9 +319,7 @@ def register_tools(app):
                     curated_badge["challenge_period"] = f"{start_date} to {end_date}"
 
                 # Add linked activity if available
-                if badge.get("badgeAssocType") == "activityId" and badge.get(
-                    "badgeAssocDataId"
-                ):
+                if badge.get("badgeAssocType") == "activityId" and badge.get("badgeAssocDataId"):
                     curated_badge["activity_id"] = badge.get("badgeAssocDataId")
 
                 # Add badge series info if part of a series
@@ -381,9 +376,7 @@ def register_tools(app):
                 curated_challenges.append(curated)
 
             # Sort by start date (most recent first)
-            curated_challenges.sort(
-                key=lambda x: x.get("start_date") or "", reverse=True
-            )
+            curated_challenges.sort(key=lambda x: x.get("start_date") or "", reverse=True)
 
             return json.dumps(
                 {"total": len(curated_challenges), "challenges": curated_challenges},
@@ -447,9 +440,7 @@ def register_tools(app):
                 curated_challenges.append(curated)
 
             # Sort by start date (most recent first)
-            curated_challenges.sort(
-                key=lambda x: x.get("start_date") or "", reverse=True
-            )
+            curated_challenges.sort(key=lambda x: x.get("start_date") or "", reverse=True)
 
             return json.dumps(
                 {"total": len(curated_challenges), "challenges": curated_challenges},
@@ -459,9 +450,7 @@ def register_tools(app):
             return f"Error retrieving badge challenges: {str(e)}"
 
     @app.tool()
-    async def get_non_completed_badge_challenges(
-        start: int = 1, limit: int = 20
-    ) -> str:
+    async def get_non_completed_badge_challenges(start: int = 1, limit: int = 20) -> str:
         """Get badge challenges currently in progress (not yet completed)
 
         Returns active challenges the user has joined but hasn't completed yet.
@@ -573,9 +562,7 @@ def register_tools(app):
                     curated["target_meters"] = target
                     curated["progress_km"] = f"{progress / 1000:.2f} km"
                     curated["target_km"] = f"{target / 1000:.2f} km"
-                    curated["progress_percent"] = _calculate_progress_percent(
-                        progress, target
-                    )
+                    curated["progress_percent"] = _calculate_progress_percent(progress, target)
 
                 curated_challenges.append(curated)
 

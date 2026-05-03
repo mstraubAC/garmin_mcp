@@ -1,5 +1,4 @@
 """Unit tests for token-bucket rate limiting and registration guard."""
-import time
 
 import pytest
 
@@ -144,7 +143,7 @@ async def test_check_per_ip_uses_bucket(storage):
 # ToolCallGuard --------------------------------------------------------------
 
 
-from garmin_mcp.auth.throttle import ToolCallGuard, RateLimitExceededError
+from garmin_mcp.auth.throttle import ToolCallGuard
 
 
 @pytest.mark.asyncio

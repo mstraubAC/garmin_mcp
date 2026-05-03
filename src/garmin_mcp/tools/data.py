@@ -1,35 +1,33 @@
 """
 Data management functions for Garmin Connect MCP Server
 """
+
 import json
-import datetime
-from typing import Any, Dict, List, Optional, Union
 
 from garmin_mcp.user_context import get_garmin_client
 
 
-
 def register_tools(app):
     """Register all data management tools with the MCP server app"""
-    
+
     @app.tool()
     async def add_body_composition(
         date: str,
         weight: float,
-        percent_fat: Optional[float] = None,
-        percent_hydration: Optional[float] = None,
-        visceral_fat_mass: Optional[float] = None,
-        bone_mass: Optional[float] = None,
-        muscle_mass: Optional[float] = None,
-        basal_met: Optional[float] = None,
-        active_met: Optional[float] = None,
-        physique_rating: Optional[int] = None,
-        metabolic_age: Optional[float] = None,
-        visceral_fat_rating: Optional[int] = None,
-        bmi: Optional[float] = None
+        percent_fat: float | None = None,
+        percent_hydration: float | None = None,
+        visceral_fat_mass: float | None = None,
+        bone_mass: float | None = None,
+        muscle_mass: float | None = None,
+        basal_met: float | None = None,
+        active_met: float | None = None,
+        physique_rating: int | None = None,
+        metabolic_age: float | None = None,
+        visceral_fat_rating: int | None = None,
+        bmi: float | None = None,
     ) -> str:
         """Add body composition data
-        
+
         Args:
             date: Date in YYYY-MM-DD format
             weight: Weight in kg
@@ -59,21 +57,18 @@ def register_tools(app):
                 physique_rating=physique_rating,
                 metabolic_age=metabolic_age,
                 visceral_fat_rating=visceral_fat_rating,
-                bmi=bmi
+                bmi=bmi,
             )
             return json.dumps(result, indent=2)
         except Exception as e:
             return f"Error adding body composition data: {str(e)}"
-    
+
     @app.tool()
     async def set_blood_pressure(
-        systolic: int,
-        diastolic: int,
-        pulse: int,
-        notes: Optional[str] = None
+        systolic: int, diastolic: int, pulse: int, notes: str | None = None
     ) -> str:
         """Set blood pressure values
-        
+
         Args:
             systolic: Systolic pressure (top number)
             diastolic: Diastolic pressure (bottom number)
@@ -81,21 +76,15 @@ def register_tools(app):
             notes: Optional notes
         """
         try:
-            result = get_garmin_client().set_blood_pressure(
-                systolic, diastolic, pulse, notes=notes
-            )
+            result = get_garmin_client().set_blood_pressure(systolic, diastolic, pulse, notes=notes)
             return json.dumps(result, indent=2)
         except Exception as e:
             return f"Error setting blood pressure values: {str(e)}"
-    
+
     @app.tool()
-    async def add_hydration_data(
-        value_in_ml: int,
-        cdate: str,
-        timestamp: str
-    ) -> str:
+    async def add_hydration_data(value_in_ml: int, cdate: str, timestamp: str) -> str:
         """Add hydration data
-        
+
         Args:
             value_in_ml: Amount of liquid in milliliters
             cdate: Date in YYYY-MM-DD format
@@ -103,9 +92,7 @@ def register_tools(app):
         """
         try:
             result = get_garmin_client().add_hydration_data(
-                value_in_ml=value_in_ml,
-                cdate=cdate,
-                timestamp=timestamp
+                value_in_ml=value_in_ml, cdate=cdate, timestamp=timestamp
             )
             return json.dumps(result, indent=2)
         except Exception as e:

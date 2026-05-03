@@ -8,6 +8,7 @@ over a sliding window, logs a WARNING to stderr (routable via
 Alerting is log-based — operators wire routing to email/Slack/push via
 their own infrastructure. This module only produces the signal.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -95,6 +96,7 @@ def _parse_iso(ts: str) -> float | None:
     into a Unix timestamp. Returns None on failure."""
     try:
         import calendar
+
         st = time.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
         return calendar.timegm(st)
     except (ValueError, OverflowError):
@@ -122,6 +124,6 @@ def _read_tail_sync(path: Path, max_lines: int) -> list[str]:
 
         # If there are fewer lines than requested, return all.
         if len(lines) <= max_lines + 1:
-            return [l for l in lines if l]
+            return [line for line in lines if line]
 
-        return lines[-(max_lines + 1):-1]
+        return lines[-(max_lines + 1) : -1]

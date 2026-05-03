@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Tuple
 
 from garminconnect import Garmin
 from garth.exc import GarthHTTPError
@@ -42,7 +41,7 @@ def token_exists(token_path: str = None) -> bool:
     return expanded_path.exists()
 
 
-def validate_tokens(token_path: str = None, is_cn: bool = False) -> Tuple[bool, str]:
+def validate_tokens(token_path: str = None, is_cn: bool = False) -> tuple[bool, str]:
     """Validate tokens by attempting to use them.
 
     Args:
@@ -52,8 +51,8 @@ def validate_tokens(token_path: str = None, is_cn: bool = False) -> Tuple[bool, 
     Returns:
         Tuple of (is_valid, error_message). error_message is empty string if valid.
     """
-    import sys
     import io
+    import sys
 
     if token_path is None:
         token_path = get_token_path()
@@ -160,5 +159,5 @@ def get_token_info(token_path: str = None, is_cn: bool = False) -> dict:
         "expanded_path": os.path.expanduser(token_path),
         "exists": exists,
         "valid": is_valid,
-        "error": error_msg
+        "error": error_msg,
     }

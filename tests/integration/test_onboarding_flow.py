@@ -15,6 +15,7 @@ Plus: the *returning user* path skips onboarding entirely.
 Uses httpx.ASGITransport (no real network), and a fake Garmin client so we
 can script MFA behavior synchronously.
 """
+
 from __future__ import annotations
 
 import time
@@ -40,7 +41,6 @@ from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket
 from garmin_mcp.server import make_app
 from garmin_mcp.user_context import MultiUserClientCache
-
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ENTRA_CLIENT_ID = "test-entra-app-id"
@@ -87,6 +87,7 @@ class FakeGarmin:
 
 def _b64url_uint(i: int) -> str:
     import base64
+
     b = i.to_bytes((i.bit_length() + 7) // 8, "big")
     return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
 
@@ -125,21 +126,36 @@ def _fake_entra_transport(public_key, id_token):
     def handler(request):
         path = request.url.path
         if path.endswith("/.well-known/openid-configuration"):
-            return httpx.Response(200, json={
-                "authorization_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize",
-                "token_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
-                "jwks_uri": f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys",
-                "issuer": f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "authorization_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize",
+                    "token_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
+                    "jwks_uri": f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys",
+                    "issuer": f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",
+                },
+            )
         if path.endswith("/discovery/v2.0/keys"):
             nums = public_key.public_numbers()
-            return httpx.Response(200, json={"keys": [{
-                "kty": "RSA", "use": "sig", "alg": "RS256", "kid": "test-kid",
-                "n": _b64url_uint(nums.n), "e": _b64url_uint(nums.e),
-            }]})
+            return httpx.Response(
+                200,
+                json={
+                    "keys": [
+                        {
+                            "kty": "RSA",
+                            "use": "sig",
+                            "alg": "RS256",
+                            "kid": "test-kid",
+                            "n": _b64url_uint(nums.n),
+                            "e": _b64url_uint(nums.e),
+                        }
+                    ]
+                },
+            )
         if path.endswith("/oauth2/v2.0/token"):
             return httpx.Response(200, json={"id_token": id_token})
         return httpx.Response(404)
+
     return httpx.MockTransport(handler)
 
 
@@ -185,13 +201,9 @@ def app_with_onboarding(rsa_keypair, tmp_path):
 
     # Fresh fake Garmin per test to reset behavior
     FakeGarmin.behavior = "needs_mfa_then_succeeds"
-    onboarding = OnboardingManager(
-        token_store, garmin_factory=lambda **kw: FakeGarmin(**kw)
-    )
+    onboarding = OnboardingManager(token_store, garmin_factory=lambda **kw: FakeGarmin(**kw))
 
-    jwt_signer = JwtSigner(
-        signing_key="test-key", issuer=PUBLIC_URL, audience=f"{PUBLIC_URL}/mcp"
-    )
+    jwt_signer = JwtSigner(signing_key="test-key", issuer=PUBLIC_URL, audience=f"{PUBLIC_URL}/mcp")
     entra = EntraOIDCClient(
         tenant_id=TENANT_ID,
         client_id=ENTRA_CLIENT_ID,
@@ -210,7 +222,8 @@ def app_with_onboarding(rsa_keypair, tmp_path):
         public_url=PUBLIC_URL,
     )
     cache = MultiUserClientCache(
-        token_store, garmin_factory=lambda: FakeGarmin(
+        token_store,
+        garmin_factory=lambda: FakeGarmin(
             email="x", password="x", is_cn=False, prompt_mfa=lambda: "x"
         ),
     )
@@ -248,11 +261,14 @@ async def _drive_to_callback(http, transport):
     assert resp.status_code == 201
     client_id = resp.json()["client_id"]
 
-    import base64, hashlib, secrets
+    import base64
+    import hashlib
+    import secrets
+
     verifier = secrets.token_urlsafe(64)
-    challenge = base64.urlsafe_b64encode(
-        hashlib.sha256(verifier.encode()).digest()
-    ).decode().rstrip("=")
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest()).decode().rstrip("=")
+    )
 
     async with _patched_jwks(transport):
         resp = await http.get(
@@ -285,9 +301,7 @@ def _wait_for_state(onboarding, ticket, predicate, timeout=2.0):
         if s and predicate(s.state):
             return s
         time.sleep(0.01)
-    raise AssertionError(
-        f"timed out waiting; last state = {onboarding.get(ticket).state}"
-    )
+    raise AssertionError(f"timed out waiting; last state = {onboarding.get(ticket).state}")
 
 
 # ---- tests ------------------------------------------------------------
@@ -305,9 +319,7 @@ async def test_new_user_is_redirected_to_onboard(app_with_onboarding):
 async def test_full_onboarding_completes_and_oauth_resumes(app_with_onboarding):
     app, ctx = app_with_onboarding
     async with _running(app), _client(app, follow_redirects=False) as http:
-        location, client_id, verifier = await _drive_to_callback(
-            http, ctx["transport"]
-        )
+        location, client_id, verifier = await _drive_to_callback(http, ctx["transport"])
         ticket = parse_qs(urlparse(location).query)["ticket"][0]
 
         # GET /onboard renders the credentials form
@@ -324,7 +336,8 @@ async def test_full_onboarding_completes_and_oauth_resumes(app_with_onboarding):
 
         # Worker hits the prompt_mfa callback and waits for code
         _wait_for_state(
-            ctx["onboarding"], ticket,
+            ctx["onboarding"],
+            ticket,
             lambda st: st.value == "AWAITING_MFA",
         )
 
@@ -337,7 +350,8 @@ async def test_full_onboarding_completes_and_oauth_resumes(app_with_onboarding):
 
         # Worker finishes → status endpoint reports COMPLETE with redirect URL
         session = _wait_for_state(
-            ctx["onboarding"], ticket,
+            ctx["onboarding"],
+            ticket,
             lambda st: st.value == "COMPLETE",
         )
         assert ctx["token_store"].has(session.user_id)
@@ -401,15 +415,15 @@ async def test_wrong_mfa_code_marks_failed(app_with_onboarding):
             data={"ticket": ticket, "email": "alice@x.com", "password": "secret"},
         )
         _wait_for_state(
-            ctx["onboarding"], ticket,
+            ctx["onboarding"],
+            ticket,
             lambda st: st.value == "AWAITING_MFA",
         )
 
-        await http.post(
-            "/onboard/mfa", data={"ticket": ticket, "code": "wrong"}
-        )
+        await http.post("/onboard/mfa", data={"ticket": ticket, "code": "wrong"})
         session = _wait_for_state(
-            ctx["onboarding"], ticket,
+            ctx["onboarding"],
+            ticket,
             lambda st: st.value == "FAILED",
         )
         assert "mfa" in session.error_message.lower()

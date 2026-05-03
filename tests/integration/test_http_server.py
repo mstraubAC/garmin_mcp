@@ -1,5 +1,5 @@
 """Integration tests for the HTTP transport (Starlette ASGI app)."""
-import asyncio
+
 import socket
 import threading
 
@@ -40,11 +40,11 @@ def test_build_mcp_registers_all_modules():
     tool_names = set(mcp._tool_manager._tools.keys())
     # Spot-check tools from each module to confirm registration ran.
     expected_samples = {
-        "get_devices",                  # devices
-        "get_workouts",                 # workouts
-        "get_nutrition_daily_meals",    # nutrition
-        "get_full_name",                # user_profile
-        "get_gear",                     # gear_management
+        "get_devices",  # devices
+        "get_workouts",  # workouts
+        "get_nutrition_daily_meals",  # nutrition
+        "get_full_name",  # user_profile
+        "get_gear",  # gear_management
     }
     missing = expected_samples - tool_names
     assert not missing, f"missing expected tools: {missing}"

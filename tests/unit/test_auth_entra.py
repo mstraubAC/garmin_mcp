@@ -4,7 +4,7 @@ Spins up an httpx mock-transport that pretends to be a tenant's discovery,
 JWKS, and token endpoints. Validates the full happy path plus the error
 branches we actually rely on.
 """
-import json
+
 import time
 from unittest.mock import patch
 
@@ -15,7 +15,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from garmin_mcp.auth.entra import EntraError, EntraOIDCClient
-
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
 CLIENT_ID = "app-id-here"
@@ -35,6 +34,7 @@ def _jwk(public_key, kid: str = "test-kid") -> dict:
 
     def b64(i: int) -> str:
         import base64
+
         b = i.to_bytes((i.bit_length() + 7) // 8, "big")
         return base64.urlsafe_b64encode(b).decode("ascii").rstrip("=")
 
@@ -69,8 +69,7 @@ def _make_id_token(private_key, *, kid: str = "test-kid", **claims) -> str:
 
 
 class _MockTransport(httpx.MockTransport):
-    def __init__(self, public_key, *, token_response: dict | None = None,
-                 token_status: int = 200):
+    def __init__(self, public_key, *, token_response: dict | None = None, token_status: int = 200):
         self.public_key = public_key
         self._token_response = token_response
         self._token_status = token_status
@@ -79,12 +78,15 @@ class _MockTransport(httpx.MockTransport):
     def _handler(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
         if path.endswith("/.well-known/openid-configuration"):
-            return httpx.Response(200, json={
-                "authorization_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize",
-                "token_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
-                "jwks_uri": f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys",
-                "issuer": f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "authorization_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/authorize",
+                    "token_endpoint": f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token",
+                    "jwks_uri": f"https://login.microsoftonline.com/{TENANT_ID}/discovery/v2.0/keys",
+                    "issuer": f"https://login.microsoftonline.com/{TENANT_ID}/v2.0",
+                },
+            )
         if path.endswith("/discovery/v2.0/keys"):
             return httpx.Response(200, json={"keys": [_jwk(self.public_key)]})
         if path.endswith("/oauth2/v2.0/token"):
@@ -105,12 +107,13 @@ def _client_with_transport(transport):
 def _patch_jwks_for_test(mock_transport):
     """PyJWKClient does sync HTTP. Patch its internal http call to use the
     mock transport instead of going to network."""
-    from urllib.request import Request
+
     def fake_fetch(self, *_, **__):
         # Build a synchronous httpx call against the mock
         url = self.uri
         with httpx.Client(transport=mock_transport) as c:
             return c.get(url).json()
+
     return patch("jwt.jwks_client.PyJWKClient.fetch_data", fake_fetch)
 
 
@@ -156,8 +159,7 @@ async def test_exchange_code_happy_path(rsa_keypair):
 @pytest.mark.asyncio
 async def test_exchange_code_token_endpoint_error(rsa_keypair):
     _, public = rsa_keypair
-    transport = _MockTransport(public, token_response={"error": "invalid_grant"},
-                               token_status=400)
+    transport = _MockTransport(public, token_response={"error": "invalid_grant"}, token_status=400)
     client = _client_with_transport(transport)
     with pytest.raises(EntraError, match="token endpoint"):
         await client.exchange_code("bad-code")
@@ -178,9 +180,8 @@ async def test_exchange_code_wrong_audience(rsa_keypair):
     id_token = _make_id_token(private, aud="some-other-app")
     transport = _MockTransport(public, token_response={"id_token": id_token})
     client = _client_with_transport(transport)
-    with _patch_jwks_for_test(transport):
-        with pytest.raises(EntraError, match="validation failed"):
-            await client.exchange_code("code")
+    with _patch_jwks_for_test(transport), pytest.raises(EntraError, match="validation failed"):
+        await client.exchange_code("code")
 
 
 @pytest.mark.asyncio
@@ -189,6 +190,5 @@ async def test_exchange_code_wrong_tenant_id(rsa_keypair):
     id_token = _make_id_token(private, tid="wrong-tenant-id-aaaaaaaaaaaaaaaaaa")
     transport = _MockTransport(public, token_response={"id_token": id_token})
     client = _client_with_transport(transport)
-    with _patch_jwks_for_test(transport):
-        with pytest.raises(EntraError, match="tid"):
-            await client.exchange_code("code")
+    with _patch_jwks_for_test(transport), pytest.raises(EntraError, match="tid"):
+        await client.exchange_code("code")

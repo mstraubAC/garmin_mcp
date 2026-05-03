@@ -3,35 +3,35 @@ Integration tests for health_wellness module MCP tools
 
 Tests all 22 health and wellness tools using FastMCP integration with mocked Garmin API responses.
 """
+
 import pytest
-from unittest.mock import Mock
 from mcp.server.fastmcp import FastMCP
 
 from garmin_mcp.tools import health as health_wellness
-from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
+from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
 from tests.fixtures.garmin_responses import (
-    MOCK_STATS,
-    MOCK_USER_SUMMARY,
-    MOCK_BODY_COMPOSITION,
-    MOCK_STEPS_DATA,
-    MOCK_DAILY_STEPS,
-    MOCK_TRAINING_READINESS,
+    MOCK_BLOOD_PRESSURE,
     MOCK_BODY_BATTERY,
     MOCK_BODY_BATTERY_EVENTS,
-    MOCK_BLOOD_PRESSURE,
+    MOCK_BODY_COMPOSITION,
+    MOCK_DAILY_STEPS,
     MOCK_FLOORS,
-    MOCK_RHR_DAY,
     MOCK_HEART_RATES,
     MOCK_HYDRATION_DATA,
-    MOCK_SLEEP_DATA,
-    MOCK_STRESS_DATA,
-    MOCK_RESPIRATION_DATA,
-    MOCK_SPO2_DATA,
     MOCK_LIFESTYLE_LOGGING_DATA,
+    MOCK_MORNING_TRAINING_READINESS,
+    MOCK_RESPIRATION_DATA,
+    MOCK_RHR_DAY,
+    MOCK_SLEEP_DATA,
+    MOCK_SPO2_DATA,
+    MOCK_STATS,
+    MOCK_STEPS_DATA,
+    MOCK_STRESS_DATA,
+    MOCK_TRAINING_READINESS,
+    MOCK_USER_SUMMARY,
+    MOCK_WEEKLY_INTENSITY_MINUTES,
     MOCK_WEEKLY_STEPS,
     MOCK_WEEKLY_STRESS,
-    MOCK_WEEKLY_INTENSITY_MINUTES,
-    MOCK_MORNING_TRAINING_READINESS,
 )
 
 
@@ -51,10 +51,7 @@ async def test_get_stats_tool(app_with_health_wellness, mock_garmin_client):
     mock_garmin_client.get_stats.return_value = MOCK_STATS
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_stats",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_stats", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -68,10 +65,7 @@ async def test_get_user_summary_tool(app_with_health_wellness, mock_garmin_clien
     mock_garmin_client.get_user_summary.return_value = MOCK_USER_SUMMARY
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_user_summary",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_user_summary", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -86,8 +80,7 @@ async def test_get_body_composition_single_date(app_with_health_wellness, mock_g
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_body_composition",
-        {"start_date": "2024-01-15"}
+        "get_body_composition", {"start_date": "2024-01-15"}
     )
 
     # Verify
@@ -103,8 +96,7 @@ async def test_get_body_composition_date_range(app_with_health_wellness, mock_ga
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_body_composition",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_body_composition", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify
@@ -120,10 +112,7 @@ async def test_get_stats_and_body_tool(app_with_health_wellness, mock_garmin_cli
     mock_garmin_client.get_stats_and_body.return_value = combined_data
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_stats_and_body",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_stats_and_body", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -137,10 +126,7 @@ async def test_get_steps_data_tool(app_with_health_wellness, mock_garmin_client)
     mock_garmin_client.get_steps_data.return_value = MOCK_STEPS_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_steps_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_steps_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -155,8 +141,7 @@ async def test_get_daily_steps_tool(app_with_health_wellness, mock_garmin_client
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_daily_steps",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_daily_steps", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify
@@ -172,8 +157,7 @@ async def test_get_training_readiness_tool(app_with_health_wellness, mock_garmin
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_training_readiness",
-        {"date": "2024-01-15"}
+        "get_training_readiness", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -189,8 +173,7 @@ async def test_get_body_battery_tool(app_with_health_wellness, mock_garmin_clien
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_body_battery",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_body_battery", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify
@@ -206,8 +189,7 @@ async def test_get_body_battery_events_tool(app_with_health_wellness, mock_garmi
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_body_battery_events",
-        {"date": "2024-01-15"}
+        "get_body_battery_events", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -223,8 +205,7 @@ async def test_get_blood_pressure_tool(app_with_health_wellness, mock_garmin_cli
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_blood_pressure",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_blood_pressure", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
 
     # Verify
@@ -239,10 +220,7 @@ async def test_get_floors_tool(app_with_health_wellness, mock_garmin_client):
     mock_garmin_client.get_floors.return_value = MOCK_FLOORS
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_floors",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_floors", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -256,10 +234,7 @@ async def test_get_rhr_day_tool(app_with_health_wellness, mock_garmin_client):
     mock_garmin_client.get_rhr_day.return_value = MOCK_RHR_DAY
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_rhr_day",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_rhr_day", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -273,10 +248,7 @@ async def test_get_heart_rates_tool(app_with_health_wellness, mock_garmin_client
     mock_garmin_client.get_heart_rates.return_value = MOCK_HEART_RATES
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_heart_rates",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_heart_rates", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -291,8 +263,7 @@ async def test_get_heart_rates_summary_tool(app_with_health_wellness, mock_garmi
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_heart_rates_summary",
-        {"date": "2024-01-15"}
+        "get_heart_rates_summary", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -308,10 +279,7 @@ async def test_get_hydration_data_tool(app_with_health_wellness, mock_garmin_cli
     mock_garmin_client.get_hydration_data.return_value = MOCK_HYDRATION_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_hydration_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_hydration_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -325,10 +293,7 @@ async def test_get_sleep_data_tool(app_with_health_wellness, mock_garmin_client)
     mock_garmin_client.get_sleep_data.return_value = MOCK_SLEEP_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_sleep_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_sleep_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -342,10 +307,7 @@ async def test_get_sleep_summary_tool(app_with_health_wellness, mock_garmin_clie
     mock_garmin_client.get_sleep_data.return_value = MOCK_SLEEP_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_sleep_summary",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_sleep_summary", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -363,10 +325,7 @@ async def test_get_stress_data_tool(app_with_health_wellness, mock_garmin_client
     mock_garmin_client.get_stress_data.return_value = MOCK_STRESS_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_stress_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_stress_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -380,10 +339,7 @@ async def test_get_stress_summary_tool(app_with_health_wellness, mock_garmin_cli
     mock_garmin_client.get_stress_data.return_value = MOCK_STRESS_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_stress_summary",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_stress_summary", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -399,8 +355,7 @@ async def test_get_respiration_data_tool(app_with_health_wellness, mock_garmin_c
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_respiration_data",
-        {"date": "2024-01-15"}
+        "get_respiration_data", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -416,8 +371,7 @@ async def test_get_respiration_summary_tool(app_with_health_wellness, mock_garmi
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_respiration_summary",
-        {"date": "2024-01-15"}
+        "get_respiration_summary", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -433,10 +387,7 @@ async def test_get_spo2_data_tool(app_with_health_wellness, mock_garmin_client):
     mock_garmin_client.get_spo2_data.return_value = MOCK_SPO2_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_spo2_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_spo2_data", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -450,10 +401,7 @@ async def test_get_all_day_stress_tool(app_with_health_wellness, mock_garmin_cli
     mock_garmin_client.get_all_day_stress.return_value = MOCK_STRESS_DATA
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_all_day_stress",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_all_day_stress", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -468,10 +416,7 @@ async def test_get_all_day_events_tool(app_with_health_wellness, mock_garmin_cli
     mock_garmin_client.get_all_day_events.return_value = mock_events
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_all_day_events",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_all_day_events", {"date": "2024-01-15"})
 
     # Verify
     assert result is not None
@@ -486,8 +431,7 @@ async def test_get_lifestyle_logging_data_tool(app_with_health_wellness, mock_ga
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_lifestyle_logging_data",
-        {"date": "2024-01-15"}
+        "get_lifestyle_logging_data", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -503,8 +447,7 @@ async def test_get_weekly_steps_tool(app_with_health_wellness, mock_garmin_clien
 
     # Call tool with end_date and weeks parameters
     result = await app_with_health_wellness.call_tool(
-        "get_weekly_steps",
-        {"end_date": "2024-01-10", "weeks": 4}
+        "get_weekly_steps", {"end_date": "2024-01-10", "weeks": 4}
     )
 
     # Verify
@@ -518,8 +461,7 @@ async def test_get_weekly_steps_tool_default_weeks(app_with_health_wellness, moc
     mock_garmin_client.get_weekly_steps.return_value = MOCK_WEEKLY_STEPS
 
     result = await app_with_health_wellness.call_tool(
-        "get_weekly_steps",
-        {"end_date": "2024-01-10"}
+        "get_weekly_steps", {"end_date": "2024-01-10"}
     )
 
     assert result is not None
@@ -534,8 +476,7 @@ async def test_get_weekly_stress_tool(app_with_health_wellness, mock_garmin_clie
 
     # Call tool with end_date and weeks parameters
     result = await app_with_health_wellness.call_tool(
-        "get_weekly_stress",
-        {"end_date": "2024-01-10", "weeks": 4}
+        "get_weekly_stress", {"end_date": "2024-01-10", "weeks": 4}
     )
 
     # Verify
@@ -551,32 +492,36 @@ async def test_get_weekly_intensity_minutes_tool(app_with_health_wellness, mock_
 
     # Call tool with end_date and weeks parameters
     result = await app_with_health_wellness.call_tool(
-        "get_weekly_intensity_minutes",
-        {"end_date": "2024-01-10", "weeks": 2}
+        "get_weekly_intensity_minutes", {"end_date": "2024-01-10", "weeks": 2}
     )
 
     # Verify - weeks=2 means start_date is 13 days back (2*7-1=13)
     # From 2024-01-10, 13 days back is 2023-12-28
     assert result is not None
-    mock_garmin_client.get_weekly_intensity_minutes.assert_called_once_with("2023-12-28", "2024-01-10")
+    mock_garmin_client.get_weekly_intensity_minutes.assert_called_once_with(
+        "2023-12-28", "2024-01-10"
+    )
 
 
 @pytest.mark.asyncio
-async def test_get_weekly_intensity_minutes_tool_default_weeks(app_with_health_wellness, mock_garmin_client):
+async def test_get_weekly_intensity_minutes_tool_default_weeks(
+    app_with_health_wellness, mock_garmin_client
+):
     """Test get_weekly_intensity_minutes tool with default weeks parameter"""
     # Setup mock
     mock_garmin_client.get_weekly_intensity_minutes.return_value = MOCK_WEEKLY_INTENSITY_MINUTES
 
     # Call tool with only end_date (weeks defaults to 4)
     result = await app_with_health_wellness.call_tool(
-        "get_weekly_intensity_minutes",
-        {"end_date": "2024-01-10"}
+        "get_weekly_intensity_minutes", {"end_date": "2024-01-10"}
     )
 
     # Verify - weeks=4 means start_date is 27 days back (4*7-1=27)
     # From 2024-01-10, 27 days back is 2023-12-14
     assert result is not None
-    mock_garmin_client.get_weekly_intensity_minutes.assert_called_once_with("2023-12-14", "2024-01-10")
+    mock_garmin_client.get_weekly_intensity_minutes.assert_called_once_with(
+        "2023-12-14", "2024-01-10"
+    )
 
 
 @pytest.mark.asyncio
@@ -587,8 +532,7 @@ async def test_get_morning_training_readiness_tool(app_with_health_wellness, moc
 
     # Call tool
     result = await app_with_health_wellness.call_tool(
-        "get_morning_training_readiness",
-        {"date": "2024-01-15"}
+        "get_morning_training_readiness", {"date": "2024-01-15"}
     )
 
     # Verify
@@ -604,10 +548,7 @@ async def test_get_steps_data_no_data(app_with_health_wellness, mock_garmin_clie
     mock_garmin_client.get_steps_data.return_value = None
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_steps_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_steps_data", {"date": "2024-01-15"})
 
     # Verify error message is returned
     assert result is not None
@@ -621,10 +562,7 @@ async def test_get_sleep_data_exception(app_with_health_wellness, mock_garmin_cl
     mock_garmin_client.get_sleep_data.side_effect = Exception("API Error")
 
     # Call tool
-    result = await app_with_health_wellness.call_tool(
-        "get_sleep_data",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_health_wellness.call_tool("get_sleep_data", {"date": "2024-01-15"})
 
     # Verify error is handled gracefully
     assert result is not None
