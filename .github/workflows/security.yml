@@ -22,12 +22,13 @@ jobs:
     - name: Set up Python
       run: uv python install 3.13
 
-    - name: Check for dependency vulnerabilities
+    - name: Export requirements for audit
+      run: uv export --no-dev --no-hashes --format requirements-txt > /tmp/audit-reqs.txt
+
+    - name: Run pip-audit (fails on any CVE)
       run: |
-        uv sync
-        uv pip list
-        echo "Checking for known security vulnerabilities..."
-        # Note: Add pip-audit or safety scan here if desired
+        uvx pip-audit --requirement /tmp/audit-reqs.txt --strict
+        echo "No known vulnerabilities found."
 
     - name: Verify lock file is up to date
       run: |
