@@ -1,0 +1,34 @@
+# Caddy reverse proxy for the Garmin MCP server.
+#
+# - TLS via Let's Encrypt (HTTP-01 challenge over port 80)
+# - HTTP/3 enabled via the upstream caddy:2 image's defaults
+# - Real client IP forwarded so RegistrationGuard sees the right address
+#
+# Replace `garmin-mcp.example.com` with your hostname before deploying.
+# Replace the email in `tls` with yours so you get cert-renewal notices.
+
+{
+    # Global Let's Encrypt account email — change me.
+    email admin@example.com
+}
+
+garmin-mcp.example.com {
+    encode zstd gzip
+
+    # Forward the real client IP so the app's per-IP rate limiter doesn't
+    # see the docker bridge address as the source of every request.
+    request_header X-Forwarded-Proto {scheme}
+    request_header X-Forwarded-For  {remote_host}
+    request_header X-Real-IP        {remote_host}
+
+    reverse_proxy garmin-mcp:8000 {
+        # Stream the SSE/streamable-HTTP MCP responses without buffering.
+        flush_interval -1
+    }
+
+    # Optional access log to stdout (Docker captures it).
+    log {
+        output stdout
+        format console
+    }
+}
