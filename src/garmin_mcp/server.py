@@ -64,7 +64,7 @@ from garmin_mcp.auth.onboarding import OnboardingManager
 from garmin_mcp.auth.onboarding_routes import build_routes as build_onboarding_routes
 from garmin_mcp.auth.provider import GarminMcpProvider
 from garmin_mcp.auth.storage import Storage
-from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket
+from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket, ToolCallGuard
 from garmin_mcp.maintenance.cleanup import cleanup_loop
 from garmin_mcp.user_context import (
     ClientCache,
@@ -249,7 +249,8 @@ def make_production_app() -> Starlette:
     )
     token_store = GarminTokenStore(storage, os.environ["GARMIN_MCP_DATA_KEY"])
     onboarding = OnboardingManager(token_store)
-    client_cache = MultiUserClientCache(token_store)
+    tool_call_guard = ToolCallGuard(storage)
+    client_cache = MultiUserClientCache(token_store, tool_call_guard=tool_call_guard)
     provider = GarminMcpProvider(
         storage=storage,
         entra=entra,

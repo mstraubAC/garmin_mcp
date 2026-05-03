@@ -157,3 +157,59 @@ def test_set_client_cache_replaces_active_cache(storage, token_store):
     set_current_user_id("u1")
     from garmin_mcp.user_context import get_garmin_client
     assert get_garmin_client() is multi.get_or_load("u1")
+
+
+# RateLimitedGarminProxy ----------------------------------------------------
+
+
+from garmin_mcp.auth.storage import Storage as StorageCls
+from garmin_mcp.auth.throttle import ToolCallGuard, RateLimitExceededError
+from garmin_mcp.user_context import RateLimitedGarminProxy
+
+
+def test_proxy_passes_non_callable_attributes(storage):
+    """Non-callable attrs (like garth, session, etc.) pass through directly."""
+    client = MagicMock(name="GarminClient")
+    client.garth = "some_garth_obj"
+    guard = ToolCallGuard(storage)
+    proxy = RateLimitedGarminProxy(client, "u1", guard)
+    assert proxy.garth == "some_garth_obj"
+
+
+def test_proxy_blocks_when_rate_limited(storage):
+    """Callable methods check rate limit; block on exhaustion."""
+    client = MagicMock(name="GarminClient")
+    client.get_full_name.return_value = "Alice"
+    guard = ToolCallGuard(storage)
+
+    # Exhaust per-user bucket.
+    for _ in range(60):
+        guard.try_consume_sync("u1")
+
+    proxy = RateLimitedGarminProxy(client, "u1", guard)
+    with pytest.raises(RateLimitExceededError) as exc:
+        proxy.get_full_name()
+    assert exc.value.user_id == "u1"
+    client.get_full_name.assert_not_called()
+
+
+def test_proxy_allows_when_under_limit(storage):
+    """Callable methods pass through when rate limit allows."""
+    client = MagicMock(name="GarminClient")
+    client.get_full_name.return_value = "Alice"
+    guard = ToolCallGuard(storage)
+    proxy = RateLimitedGarminProxy(client, "u1", guard)
+    result = proxy.get_full_name()
+    assert result == "Alice"
+    client.get_full_name.assert_called_once()
+
+
+def test_cache_wraps_with_proxy_when_guard_set(storage, token_store):
+    """MultiUserClientCache wraps clients in proxy when guard is provided."""
+    _seed_user_with_token(storage, token_store, "u1", "blob")
+    guard = ToolCallGuard(storage)
+    cache = MultiUserClientCache(
+        token_store, garmin_factory=_fake_garmin_factory(), tool_call_guard=guard
+    )
+    client = cache.get_or_load("u1")
+    assert isinstance(client, RateLimitedGarminProxy)

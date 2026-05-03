@@ -139,3 +139,55 @@ async def test_check_per_ip_uses_bucket(storage):
         assert await g.check_per_ip("1.2.3.4")
     assert await g.check_per_ip("1.2.3.4") is False
     assert await g.check_per_ip("5.6.7.8")  # different IP, fresh bucket
+
+
+# ToolCallGuard --------------------------------------------------------------
+
+
+from garmin_mcp.auth.throttle import ToolCallGuard, RateLimitExceededError
+
+
+@pytest.mark.asyncio
+async def test_tool_call_guard_per_user_limit(storage):
+    guard = ToolCallGuard(storage)
+    # Per-user bucket has capacity 60 — exhaust it.
+    for _ in range(60):
+        assert await guard.try_consume("u1") is True
+    # 61st call blocked.
+    assert await guard.try_consume("u1") is False
+
+
+@pytest.mark.asyncio
+async def test_tool_call_guard_users_isolated(storage):
+    guard = ToolCallGuard(storage)
+    # u1 exhausts their bucket.
+    for _ in range(60):
+        await guard.try_consume("u1")
+    assert await guard.try_consume("u1") is False
+    # u2 still has full bucket.
+    assert await guard.try_consume("u2") is True
+
+
+@pytest.mark.asyncio
+async def test_tool_call_guard_global_limit(storage):
+    guard = ToolCallGuard(storage)
+    # Global bucket has capacity 120.
+    for i in range(120):
+        assert await guard.try_consume(f"u{i % 3}") is True
+    # 121st call globally blocked.
+    assert await guard.try_consume("u1") is False
+
+
+@pytest.mark.asyncio
+async def test_tool_call_guard_persists_across_instances(tmp_path):
+    s = Storage(tmp_path / "state.db")
+    g1 = ToolCallGuard(s)
+    for _ in range(60):
+        await g1.try_consume("u1")
+    s.close()
+
+    s2 = Storage(tmp_path / "state.db")
+    g2 = ToolCallGuard(s2)
+    # u1 still exhausted after restart.
+    assert await g2.try_consume("u1") is False
+    s2.close()
