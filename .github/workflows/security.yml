@@ -23,7 +23,7 @@ jobs:
       run: uv python install 3.13
 
     - name: Export requirements for audit
-      run: uv export --no-dev --no-hashes --format requirements-txt > /tmp/audit-reqs.txt
+      run: uv export --no-dev --no-hashes --no-emit-project --format requirements-txt > /tmp/audit-reqs.txt
 
     - name: Run pip-audit (fails on any CVE)
       run: |
