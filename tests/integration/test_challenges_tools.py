@@ -8,6 +8,7 @@ from unittest.mock import Mock
 from mcp.server.fastmcp import FastMCP
 
 from garmin_mcp import challenges
+from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 from tests.fixtures.garmin_responses import (
     MOCK_GOALS,
     MOCK_PERSONAL_RECORD,
@@ -18,7 +19,7 @@ from tests.fixtures.garmin_responses import (
 @pytest.fixture
 def app_with_challenges(mock_garmin_client):
     """Create FastMCP app with challenges tools registered"""
-    challenges.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Challenges")
     app = challenges.register_tools(app)
     return app

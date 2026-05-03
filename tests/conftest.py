@@ -6,6 +6,19 @@ from unittest.mock import Mock
 from datetime import datetime, timedelta
 from mcp.server.fastmcp import FastMCP
 
+from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
+
+
+@pytest.fixture
+def install_mock_client(mock_garmin_client):
+    """Install the mock Garmin client into the user_context cache.
+
+    Test fixtures that build a FastMCP app should depend on this so the
+    tools can resolve `get_garmin_client()` to the mock.
+    """
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
+    return mock_garmin_client
+
 
 @pytest.fixture
 def mock_garmin_client():
@@ -166,15 +179,13 @@ def create_test_app(module, mock_client):
 
     Args:
         module: The module to register (e.g., health_wellness)
-        mock_client: Mock Garmin client to configure the module with
+        mock_client: Mock Garmin client to install into the user_context cache
 
     Returns:
         FastMCP app instance with tools registered
     """
-    # Configure the module with mock client
-    module.configure(mock_client)
+    set_client_cache(SingleUserClientCache(mock_client))
 
-    # Create app and register tools
     app = FastMCP("Test Garmin MCP")
     app = module.register_tools(app)
 

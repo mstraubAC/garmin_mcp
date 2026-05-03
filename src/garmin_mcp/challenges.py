@@ -6,8 +6,7 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
 # Badge category mappings
 # This list is estimated based on real data, the mapping might not be 100% accurate
@@ -215,12 +214,6 @@ def _format_pr_value(value: float, value_type: str) -> str:
     return str(value)
 
 
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
-
-
 def register_tools(app):
     """Register all challenges-related tools with the MCP server app"""
 
@@ -232,7 +225,7 @@ def register_tools(app):
             goal_type: Type of goals to retrieve. Options: "active", "future", or "past"
         """
         try:
-            goals = garmin_client.get_goals(goal_type)
+            goals = get_garmin_client().get_goals(goal_type)
             if not goals:
                 return f"No {goal_type} goals found."
             return json.dumps(goals, indent=2)
@@ -243,7 +236,7 @@ def register_tools(app):
     async def get_personal_record() -> str:
         """Get personal records for user"""
         try:
-            records = garmin_client.get_personal_record()
+            records = get_garmin_client().get_personal_record()
             if not records:
                 return "No personal records found."
 
@@ -288,7 +281,7 @@ def register_tools(app):
     async def get_earned_badges() -> str:
         """Get earned badges for user"""
         try:
-            badges = garmin_client.get_earned_badges()
+            badges = get_garmin_client().get_earned_badges()
             if not badges:
                 return "No earned badges found."
 
@@ -362,7 +355,7 @@ def register_tools(app):
             limit: Maximum number of challenges to return (default 20, max 100)
         """
         try:
-            challenges = garmin_client.get_adhoc_challenges(start, min(limit, 100))
+            challenges = get_garmin_client().get_adhoc_challenges(start, min(limit, 100))
             if not challenges:
                 return "No adhoc challenges found."
 
@@ -411,7 +404,7 @@ def register_tools(app):
             limit: Maximum number of challenges to return (default 20, max 100)
         """
         try:
-            challenges = garmin_client.get_available_badge_challenges(start, min(limit, 100))
+            challenges = get_garmin_client().get_available_badge_challenges(start, min(limit, 100))
             if not challenges:
                 return "No available badge challenges found."
 
@@ -444,7 +437,7 @@ def register_tools(app):
             limit: Maximum number of challenges to return (default 20, max 100)
         """
         try:
-            challenges = garmin_client.get_badge_challenges(start, min(limit, 100))
+            challenges = get_garmin_client().get_badge_challenges(start, min(limit, 100))
             if not challenges:
                 return "No badge challenges found."
 
@@ -479,7 +472,7 @@ def register_tools(app):
             limit: Maximum number of challenges to return (default 20, max 100)
         """
         try:
-            challenges = garmin_client.get_non_completed_badge_challenges(
+            challenges = get_garmin_client().get_non_completed_badge_challenges(
                 start, min(limit, 100)
             )
             if not challenges:
@@ -508,7 +501,7 @@ def register_tools(app):
         finish times based on the user's recent training data and VO2 max.
         """
         try:
-            predictions = garmin_client.get_race_predictions()
+            predictions = get_garmin_client().get_race_predictions()
             if not predictions:
                 return "No race predictions found."
 
@@ -551,7 +544,7 @@ def register_tools(app):
             limit: Maximum number of challenges to return (default 20, max 100)
         """
         try:
-            challenges = garmin_client.get_inprogress_virtual_challenges(
+            challenges = get_garmin_client().get_inprogress_virtual_challenges(
                 start, min(limit, 100)
             )
             if not challenges:

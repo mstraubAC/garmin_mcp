@@ -5,14 +5,8 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -29,7 +23,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            stats = garmin_client.get_stats(date)
+            stats = get_garmin_client().get_stats(date)
             if not stats:
                 return f"No stats found for {date}"
 
@@ -103,7 +97,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            summary = garmin_client.get_user_summary(date)
+            summary = get_garmin_client().get_user_summary(date)
             if not summary:
                 return f"No user summary found for {date}"
 
@@ -121,11 +115,11 @@ def register_tools(app):
         """
         try:
             if end_date:
-                composition = garmin_client.get_body_composition(start_date, end_date)
+                composition = get_garmin_client().get_body_composition(start_date, end_date)
                 if not composition:
                     return f"No body composition data found between {start_date} and {end_date}"
             else:
-                composition = garmin_client.get_body_composition(start_date)
+                composition = get_garmin_client().get_body_composition(start_date)
                 if not composition:
                     return f"No body composition data found for {start_date}"
 
@@ -141,7 +135,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_stats_and_body(date)
+            data = get_garmin_client().get_stats_and_body(date)
             if not data:
                 return f"No stats and body composition data found for {date}"
 
@@ -160,7 +154,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            steps_data = garmin_client.get_steps_data(date)
+            steps_data = get_garmin_client().get_steps_data(date)
             if not steps_data:
                 return f"No steps data found for {date}"
 
@@ -177,7 +171,7 @@ def register_tools(app):
             end_date: End date in YYYY-MM-DD format
         """
         try:
-            steps_data = garmin_client.get_daily_steps(start_date, end_date)
+            steps_data = get_garmin_client().get_daily_steps(start_date, end_date)
             if not steps_data:
                 return f"No daily steps data found between {start_date} and {end_date}"
 
@@ -195,7 +189,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            readiness_list = garmin_client.get_training_readiness(date)
+            readiness_list = get_garmin_client().get_training_readiness(date)
             if not readiness_list:
                 return f"No training readiness data found for {date}"
 
@@ -252,7 +246,7 @@ def register_tools(app):
             end_date: End date in YYYY-MM-DD format
         """
         try:
-            battery_data = garmin_client.get_body_battery(start_date, end_date)
+            battery_data = get_garmin_client().get_body_battery(start_date, end_date)
             if not battery_data:
                 return f"No body battery data found between {start_date} and {end_date}"
 
@@ -297,7 +291,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            events = garmin_client.get_body_battery_events(date)
+            events = get_garmin_client().get_body_battery_events(date)
             if not events:
                 return f"No body battery events found for {date}"
 
@@ -314,7 +308,7 @@ def register_tools(app):
             end_date: End date in YYYY-MM-DD format
         """
         try:
-            bp_data = garmin_client.get_blood_pressure(start_date, end_date)
+            bp_data = get_garmin_client().get_blood_pressure(start_date, end_date)
             if not bp_data:
                 return f"No blood pressure data found between {start_date} and {end_date}"
 
@@ -330,7 +324,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            floors_data = garmin_client.get_floors(date)
+            floors_data = get_garmin_client().get_floors(date)
             if not floors_data:
                 return f"No floors data found for {date}"
 
@@ -346,7 +340,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            rhr_data = garmin_client.get_rhr_day(date)
+            rhr_data = get_garmin_client().get_rhr_day(date)
             if not rhr_data:
                 return f"No resting heart rate data found for {date}"
 
@@ -365,7 +359,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            hr_data = garmin_client.get_heart_rates(date)
+            hr_data = get_garmin_client().get_heart_rates(date)
             if not hr_data:
                 return f"No heart rate data found for {date}"
 
@@ -384,7 +378,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            hr_data = garmin_client.get_heart_rates(date)
+            hr_data = get_garmin_client().get_heart_rates(date)
             if not hr_data:
                 return f"No heart rate data found for {date}"
 
@@ -419,7 +413,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            hydration_data = garmin_client.get_hydration_data(date)
+            hydration_data = get_garmin_client().get_hydration_data(date)
             if not hydration_data:
                 return f"No hydration data found for {date}"
 
@@ -438,7 +432,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            sleep_data = garmin_client.get_sleep_data(date)
+            sleep_data = get_garmin_client().get_sleep_data(date)
             if not sleep_data:
                 return f"No sleep data found for {date}"
 
@@ -458,7 +452,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            sleep_data = garmin_client.get_sleep_data(date)
+            sleep_data = get_garmin_client().get_sleep_data(date)
             if not sleep_data:
                 return f"No sleep summary found for {date}"
 
@@ -531,7 +525,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            stress_data = garmin_client.get_stress_data(date)
+            stress_data = get_garmin_client().get_stress_data(date)
             if not stress_data:
                 return f"No stress data found for {date}"
 
@@ -550,7 +544,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            stress_data = garmin_client.get_stress_data(date)
+            stress_data = get_garmin_client().get_stress_data(date)
             if not stress_data:
                 return f"No stress data found for {date}"
 
@@ -595,7 +589,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            respiration_data = garmin_client.get_respiration_data(date)
+            respiration_data = get_garmin_client().get_respiration_data(date)
             if not respiration_data:
                 return f"No respiration data found for {date}"
 
@@ -613,7 +607,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            resp_data = garmin_client.get_respiration_data(date)
+            resp_data = get_garmin_client().get_respiration_data(date)
             if not resp_data:
                 return f"No respiration data found for {date}"
 
@@ -640,7 +634,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            spo2_data = garmin_client.get_spo2_data(date)
+            spo2_data = get_garmin_client().get_spo2_data(date)
             if not spo2_data:
                 return f"No SpO2 data found for {date}"
 
@@ -675,7 +669,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            stress_data = garmin_client.get_all_day_stress(date)
+            stress_data = get_garmin_client().get_all_day_stress(date)
             if not stress_data:
                 return f"No all-day stress data found for {date}"
 
@@ -691,7 +685,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            events = garmin_client.get_all_day_events(date)
+            events = get_garmin_client().get_all_day_events(date)
             if not events:
                 return f"No daily wellness events found for {date}"
 
@@ -710,7 +704,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_lifestyle_logging_data(date)
+            data = get_garmin_client().get_lifestyle_logging_data(date)
             if not data:
                 return f"No lifestyle logging data found for {date}"
 
@@ -730,7 +724,7 @@ def register_tools(app):
         """
         try:
             weeks = min(weeks, 52)  # Cap at 52 weeks
-            weekly_data = garmin_client.get_weekly_steps(end_date, weeks)
+            weekly_data = get_garmin_client().get_weekly_steps(end_date, weeks)
             if not weekly_data:
                 return f"No weekly steps data found for {weeks} weeks ending {end_date}"
 
@@ -777,7 +771,7 @@ def register_tools(app):
         """
         try:
             weeks = min(weeks, 52)  # Cap at 52 weeks
-            weekly_data = garmin_client.get_weekly_stress(end_date, weeks)
+            weekly_data = get_garmin_client().get_weekly_stress(end_date, weeks)
             if not weekly_data:
                 return f"No weekly stress data found for {weeks} weeks ending {end_date}"
 
@@ -826,7 +820,7 @@ def register_tools(app):
             start_dt = end_dt - datetime.timedelta(days=(weeks * 7) - 1)
             start_date = start_dt.strftime("%Y-%m-%d")
 
-            weekly_data = garmin_client.get_weekly_intensity_minutes(start_date, end_date)
+            weekly_data = get_garmin_client().get_weekly_intensity_minutes(start_date, end_date)
             if not weekly_data:
                 return f"No weekly intensity minutes data found for {weeks} weeks ending {end_date}"
 
@@ -874,7 +868,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            readiness = garmin_client.get_morning_training_readiness(date)
+            readiness = get_garmin_client().get_morning_training_readiness(date)
             if not readiness:
                 return f"No morning training readiness data found for {date}"
 

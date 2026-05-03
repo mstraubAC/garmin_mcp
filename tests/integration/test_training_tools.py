@@ -10,6 +10,7 @@ from mcp.server.fastmcp import FastMCP
 import json
 
 from garmin_mcp import training
+from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 from tests.fixtures.garmin_responses import (
     MOCK_PROGRESS_SUMMARY,
     MOCK_HRV_DATA,
@@ -24,7 +25,7 @@ from tests.fixtures.garmin_responses import (
 @pytest.fixture
 def app_with_training(mock_garmin_client):
     """Create FastMCP app with training tools registered"""
-    training.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Training")
     app = training.register_tools(app)
     return app

@@ -23,6 +23,7 @@ from garmin_mcp import (
     gear_management,
     womens_health
 )
+from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 from tests.fixtures.garmin_responses import (
     MOCK_DEVICES,
     MOCK_DEVICE_SETTINGS,
@@ -43,7 +44,7 @@ from tests.fixtures.garmin_responses import (
 @pytest.fixture
 def app_with_devices(mock_garmin_client):
     """Create FastMCP app with devices tools registered"""
-    devices.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Devices")
     app = devices.register_tools(app)
     return app
@@ -120,7 +121,7 @@ async def test_get_device_alarms_tool(app_with_devices, mock_garmin_client):
 @pytest.fixture
 def app_with_weight(mock_garmin_client):
     """Create FastMCP app with weight_management tools registered"""
-    weight_management.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Weight Management")
     app = weight_management.register_tools(app)
     return app
@@ -193,7 +194,7 @@ async def test_add_weigh_in_with_timestamps_tool(app_with_weight, mock_garmin_cl
 @pytest.fixture
 def app_with_user_profile(mock_garmin_client):
     """Create FastMCP app with user_profile tools registered"""
-    user_profile.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test User Profile")
     app = user_profile.register_tools(app)
     return app
@@ -240,7 +241,7 @@ async def test_get_userprofile_settings_tool(app_with_user_profile, mock_garmin_
 @pytest.fixture
 def app_with_data_management(mock_garmin_client):
     """Create FastMCP app with data_management tools registered"""
-    data_management.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Data Management")
     app = data_management.register_tools(app)
     return app
@@ -307,7 +308,7 @@ async def test_add_hydration_data_tool(app_with_data_management, mock_garmin_cli
 @pytest.fixture
 def app_with_gear(mock_garmin_client):
     """Create FastMCP app with gear_management tools registered"""
-    gear_management.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Gear Management")
     app = gear_management.register_tools(app)
     return app
@@ -375,7 +376,7 @@ async def test_remove_gear_from_activity_tool(app_with_gear, mock_garmin_client)
 @pytest.fixture
 def app_with_womens_health(mock_garmin_client):
     """Create FastMCP app with womens_health tools registered"""
-    womens_health.configure(mock_garmin_client)
+    set_client_cache(SingleUserClientCache(mock_garmin_client))
     app = FastMCP("Test Womens Health")
     app = womens_health.register_tools(app)
     return app

@@ -5,14 +5,8 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -28,7 +22,7 @@ def register_tools(app):
             activity_type: Optional activity type filter (e.g., cycling, running, swimming)
         """
         try:
-            activities = garmin_client.get_activities_by_date(start_date, end_date, activity_type)
+            activities = get_garmin_client().get_activities_by_date(start_date, end_date, activity_type)
             if not activities:
                 return f"No activities found between {start_date} and {end_date}" + \
                        (f" for activity type '{activity_type}'" if activity_type else "")
@@ -69,7 +63,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_activities_fordate(date)
+            data = get_garmin_client().get_activities_fordate(date)
             if not data:
                 return f"No activities found for {date}"
 
@@ -117,7 +111,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve
         """
         try:
-            activity = garmin_client.get_activity(activity_id)
+            activity = get_garmin_client().get_activity(activity_id)
             if not activity:
                 return f"No activity found with ID {activity_id}"
 
@@ -205,7 +199,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve splits for
         """
         try:
-            splits = garmin_client.get_activity_splits(activity_id)
+            splits = get_garmin_client().get_activity_splits(activity_id)
             if not splits:
                 return f"No splits found for activity with ID {activity_id}"
 
@@ -251,7 +245,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve typed splits for
         """
         try:
-            typed_splits = garmin_client.get_activity_typed_splits(activity_id)
+            typed_splits = get_garmin_client().get_activity_typed_splits(activity_id)
             if not typed_splits:
                 return f"No typed splits found for activity with ID {activity_id}"
 
@@ -267,7 +261,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve split summaries for
         """
         try:
-            split_summaries = garmin_client.get_activity_split_summaries(activity_id)
+            split_summaries = get_garmin_client().get_activity_split_summaries(activity_id)
             if not split_summaries:
                 return f"No split summaries found for activity with ID {activity_id}"
 
@@ -283,7 +277,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve weather data for
         """
         try:
-            weather = garmin_client.get_activity_weather(activity_id)
+            weather = get_garmin_client().get_activity_weather(activity_id)
             if not weather:
                 return f"No weather data found for activity with ID {activity_id}"
 
@@ -316,7 +310,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve heart rate time zone data for
         """
         try:
-            hr_zones = garmin_client.get_activity_hr_in_timezones(activity_id)
+            hr_zones = get_garmin_client().get_activity_hr_in_timezones(activity_id)
             if not hr_zones:
                 return f"No heart rate time zone data found for activity with ID {activity_id}"
 
@@ -332,7 +326,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve gear data for
         """
         try:
-            gear = garmin_client.get_activity_gear(activity_id)
+            gear = get_garmin_client().get_activity_gear(activity_id)
             if not gear:
                 return f"No gear data found for activity with ID {activity_id}"
 
@@ -348,7 +342,7 @@ def register_tools(app):
             activity_id: ID of the activity to retrieve exercise sets for
         """
         try:
-            exercise_sets = garmin_client.get_activity_exercise_sets(activity_id)
+            exercise_sets = get_garmin_client().get_activity_exercise_sets(activity_id)
             if not exercise_sets:
                 return f"No exercise sets found for activity with ID {activity_id}"
 
@@ -363,7 +357,7 @@ def register_tools(app):
         Returns the total number of activities recorded.
         """
         try:
-            count = garmin_client.count_activities()
+            count = get_garmin_client().count_activities()
             if count is None:
                 return "Unable to retrieve activity count"
 
@@ -389,7 +383,7 @@ def register_tools(app):
             # Cap limit at 100 for safety and performance
             limit = min(max(1, limit), 100)
 
-            activities = garmin_client.get_activities(start, limit)
+            activities = get_garmin_client().get_activities(start, limit)
             if not activities:
                 return f"No activities found at index {start}"
 
@@ -434,7 +428,7 @@ def register_tools(app):
         useful for filtering activities by type.
         """
         try:
-            activity_types = garmin_client.get_activity_types()
+            activity_types = get_garmin_client().get_activity_types()
             if not activity_types:
                 return "No activity types found"
 
