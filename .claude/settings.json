@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push *)",
+      "Bash(gh pr create --title 'security: validate date/UUID inputs and URL-encode search parameter' --body ' *)",
+      "Bash(brew install *)"
+    ]
+  }
+}

@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 
 import json
 
-from garmin_mcp import training
+from garmin_mcp.tools import training
 from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 from tests.fixtures.garmin_responses import (
     MOCK_PROGRESS_SUMMARY,

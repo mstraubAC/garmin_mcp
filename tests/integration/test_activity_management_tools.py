@@ -7,7 +7,7 @@ import pytest
 from unittest.mock import Mock
 from mcp.server.fastmcp import FastMCP
 
-from garmin_mcp import activity_management
+from garmin_mcp.tools import activities as activity_management
 from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 from tests.fixtures.garmin_responses import (
     MOCK_ACTIVITIES,

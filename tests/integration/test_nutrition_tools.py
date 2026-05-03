@@ -9,7 +9,7 @@ import pytest
 from unittest.mock import Mock, MagicMock
 from mcp.server.fastmcp import FastMCP
 
-from garmin_mcp import nutrition
+from garmin_mcp.tools import nutrition
 from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 
 

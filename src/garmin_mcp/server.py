@@ -39,20 +39,17 @@ from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from garmin_mcp import (
-    activity_management,
+from garmin_mcp.tools import (
+    activities,
     challenges,
-    data_management,
+    data,
     devices,
-    email,
-    gear_management,
-    health_wellness,
-    init_api,
+    gear,
+    health,
     nutrition,
-    password,
     training,
     user_profile,
-    weight_management,
+    weight,
     womens_health,
     workout_templates,
     workouts,
@@ -110,16 +107,16 @@ def build_mcp(
         )
 
     mcp = FastMCP(**kwargs)
-    activity_management.register_tools(mcp)
-    health_wellness.register_tools(mcp)
+    activities.register_tools(mcp)
+    health.register_tools(mcp)
     user_profile.register_tools(mcp)
     devices.register_tools(mcp)
-    gear_management.register_tools(mcp)
-    weight_management.register_tools(mcp)
+    gear.register_tools(mcp)
+    weight.register_tools(mcp)
     challenges.register_tools(mcp)
     training.register_tools(mcp)
     workouts.register_tools(mcp)
-    data_management.register_tools(mcp)
+    data.register_tools(mcp)
     womens_health.register_tools(mcp)
     nutrition.register_tools(mcp)
     workout_templates.register_resources(mcp)
@@ -131,6 +128,13 @@ async def healthz(_: Request) -> JSONResponse:
 
 
 def _default_client_provider():
+    # Legacy single-user mode: uses Garmin creds from env vars.
+    # In production (make_production_app), this path is never hit —
+    # client_cache is passed directly.
+    from garmin_mcp.tools._token_utils import init_api
+    import os as _os
+    email = _os.environ.get("GARMIN_EMAIL")
+    password = _os.environ.get("GARMIN_PASSWORD")
     client = init_api(email, password)
     if client is None:
         print(

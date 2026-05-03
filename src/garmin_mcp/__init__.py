@@ -12,19 +12,19 @@ from garth.exc import GarthHTTPError
 from garminconnect import Garmin, GarminConnectAuthenticationError
 
 # Import all modules
-from garmin_mcp import activity_management
-from garmin_mcp import health_wellness
-from garmin_mcp import user_profile
-from garmin_mcp import devices
-from garmin_mcp import gear_management
-from garmin_mcp import weight_management
-from garmin_mcp import challenges
-from garmin_mcp import training
-from garmin_mcp import workouts
-from garmin_mcp import workout_templates
-from garmin_mcp import data_management
-from garmin_mcp import womens_health
-from garmin_mcp import nutrition
+from garmin_mcp.tools import activities
+from garmin_mcp.tools import health
+from garmin_mcp.tools import user_profile
+from garmin_mcp.tools import devices
+from garmin_mcp.tools import gear
+from garmin_mcp.tools import weight
+from garmin_mcp.tools import challenges
+from garmin_mcp.tools import training
+from garmin_mcp.tools import workouts
+from garmin_mcp.tools import workout_templates
+from garmin_mcp.tools import data
+from garmin_mcp.tools import womens_health
+from garmin_mcp.tools import nutrition
 from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 
 
