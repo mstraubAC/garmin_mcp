@@ -421,12 +421,16 @@ async def test_gear_error_and_empty(app_with_gear, mock_garmin_client):
 
     # Error on add_gear_to_activity
     mock_garmin_client.add_gear_to_activity.side_effect = Exception("fail")
-    result = await app_with_gear.call_tool("add_gear_to_activity", {"activity_id": "1", "gear_uuid": "abc"})
+    result = await app_with_gear.call_tool(
+        "add_gear_to_activity", {"activity_id": "1", "gear_uuid": "abc"}
+    )
     assert "Error" in str(result)
 
     # Error on remove_gear_from_activity
     mock_garmin_client.remove_gear_from_activity.side_effect = Exception("fail")
-    result = await app_with_gear.call_tool("remove_gear_from_activity", {"activity_id": "1", "gear_uuid": "abc"})
+    result = await app_with_gear.call_tool(
+        "remove_gear_from_activity", {"activity_id": "1", "gear_uuid": "abc"}
+    )
     assert "Error" in str(result)
 
 
@@ -435,13 +439,17 @@ async def test_weight_error_and_empty(app_with_weight, mock_garmin_client):
     """Weight: error paths and empty data."""
     # Error on get_weigh_ins
     mock_garmin_client.get_weigh_ins.side_effect = Exception("fail")
-    result = await app_with_weight.call_tool("get_weigh_ins", {"start_date": "2024-01-01", "end_date": "2024-01-31"})
+    result = await app_with_weight.call_tool(
+        "get_weigh_ins", {"start_date": "2024-01-01", "end_date": "2024-01-31"}
+    )
     assert "Error" in str(result)
     mock_garmin_client.get_weigh_ins.side_effect = None
 
     # No weigh_ins found
     mock_garmin_client.get_weigh_ins.return_value = []
-    result = await app_with_weight.call_tool("get_weigh_ins", {"start_date": "2024-01-01", "end_date": "2024-01-31"})
+    result = await app_with_weight.call_tool(
+        "get_weigh_ins", {"start_date": "2024-01-01", "end_date": "2024-01-31"}
+    )
     assert "No weight" in str(result)
 
     # Error on get_daily_weigh_ins
@@ -467,9 +475,15 @@ async def test_weight_error_and_empty(app_with_weight, mock_garmin_client):
 
     # Error on add_weigh_in_with_timestamps
     mock_garmin_client.add_weigh_in_with_timestamps.side_effect = Exception("fail")
-    result = await app_with_weight.call_tool("add_weigh_in_with_timestamps", {
-        "weight": 70, "date": "2024-01-01", "time_timestamp": "10:00:00", "gmt_timestamp": "10:00:00"
-    })
+    result = await app_with_weight.call_tool(
+        "add_weigh_in_with_timestamps",
+        {
+            "weight": 70,
+            "date": "2024-01-01",
+            "time_timestamp": "10:00:00",
+            "gmt_timestamp": "10:00:00",
+        },
+    )
     assert "Error" in str(result)
 
 
@@ -494,11 +508,13 @@ async def test_womens_health_all_error_paths(app_with_womens_health, mock_garmin
     assert "Error" in str(result)
 
     mock_garmin_client.get_menstrual_data_for_date.side_effect = Exception("fail")
-    result = await app_with_womens_health.call_tool("get_menstrual_data_for_date", {"date": "2024-01-01"})
+    result = await app_with_womens_health.call_tool(
+        "get_menstrual_data_for_date", {"date": "2024-01-01"}
+    )
     assert "Error" in str(result)
 
     mock_garmin_client.get_menstrual_calendar_data.side_effect = Exception("fail")
-    result = await app_with_womens_health.call_tool("get_menstrual_calendar_data", {
-        "start_date": "2024-01-01", "end_date": "2024-01-31"
-    })
+    result = await app_with_womens_health.call_tool(
+        "get_menstrual_calendar_data", {"start_date": "2024-01-01", "end_date": "2024-01-31"}
+    )
     assert "Error" in str(result)

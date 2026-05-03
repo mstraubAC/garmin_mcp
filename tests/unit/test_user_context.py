@@ -269,9 +269,7 @@ def test_cache_size_returns_entry_count(storage, token_store):
     """size() returns cached entry count."""
     _seed_user_with_token(storage, token_store, "u1", "blob1")
     _seed_user_with_token(storage, token_store, "u2", "blob2")
-    cache = MultiUserClientCache(
-        token_store, garmin_factory=_fake_garmin_factory()
-    )
+    cache = MultiUserClientCache(token_store, garmin_factory=_fake_garmin_factory())
     cache.get_or_load("u1")
     assert cache.size() == 1
     cache.get_or_load("u2")
