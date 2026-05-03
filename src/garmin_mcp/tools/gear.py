@@ -3,6 +3,7 @@ Gear management functions for Garmin Connect MCP Server
 """
 
 import json
+from typing import Any
 
 from garmin_mcp.user_context import get_garmin_client
 
