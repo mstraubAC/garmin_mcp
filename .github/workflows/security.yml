@@ -70,9 +70,10 @@ jobs:
         uv run ruff format --check src/ tests/
         echo "✅ Ruff formatting passed"
 
-    - name: Type check with mypy (informational — types not fully annotated)
+    - name: Type check with mypy
       run: |
-        uv run mypy src/garmin_mcp || echo "⚠️  Mypy found type issues (non-blocking)"
+        uv run mypy src/garmin_mcp
+        echo "✅ Mypy type checking passed"
 
     - name: Check import structure
       run: |

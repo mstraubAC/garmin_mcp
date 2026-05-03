@@ -173,8 +173,8 @@ def register_tools(app):
     async def add_weigh_in_with_timestamps(
         weight: float,
         unit_key: str = "kg",
-        date_timestamp: str = None,
-        gmt_timestamp: str = None,
+        date_timestamp: str | None = None,
+        gmt_timestamp: str | None = None,
     ) -> str:
         """Add a new weight measurement with specific timestamps
 

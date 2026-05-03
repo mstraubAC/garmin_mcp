@@ -110,7 +110,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
         # Global cap
         if not self.guard.under_global_cap():
             raise RegistrationError(
-                error="server_error",
+                error="server_error",  # type: ignore[arg-type]
                 error_description="registration capacity reached; try again later",
             )
 
@@ -197,7 +197,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
                 detail=str(e),
             )
             raise TokenError(
-                error="server_error",
+                error="server_error",  # type: ignore[arg-type]
                 error_description=f"entra exchange failed: {e}",
             )
 

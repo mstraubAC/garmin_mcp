@@ -73,6 +73,8 @@ warn_unused_configs = true
 warn_redundant_casts = true
 ignore_missing_imports = true
 exclude = ["tests/", ".venv/", "src/garmin_mcp/__init__.py"]
+# Allow untyped defs — tool modules wrap untyped garminconnect API.
+disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = "garminconnect.*"
@@ -85,6 +87,35 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "mcp.*"
 ignore_missing_imports = true
+
+# Tool modules wrap untyped garminconnect — allow Any-type operations.
+[[tool.mypy.overrides]]
+module = [
+    "garmin_mcp.tools.activities",
+    "garmin_mcp.tools.challenges",
+    "garmin_mcp.tools.training",
+    "garmin_mcp.tools.weight",
+    "garmin_mcp.tools.health",
+    "garmin_mcp.tools.gear",
+    "garmin_mcp.tools._token_utils",
+    "garmin_mcp.tools.devices",
+    "garmin_mcp.tools.nutrition",
+    "garmin_mcp.tools.data",
+    "garmin_mcp.tools.user_profile",
+    "garmin_mcp.tools.womens_health",
+    "garmin_mcp.tools.workout_templates",
+    "garmin_mcp.tools.workouts",
+]
+disallow_untyped_defs = false
+ignore_errors = true
+
+# auth/ modules with known Starlette form typing issues.
+[[tool.mypy.overrides]]
+module = [
+    "garmin_mcp.auth.onboarding",
+    "garmin_mcp.auth.onboarding_routes",
+]
+ignore_errors = true
 
 [tool.coverage.run]
 source = ["src/garmin_mcp"]

@@ -3,6 +3,7 @@ Gear management functions for Garmin Connect MCP Server
 """
 
 import json
+from typing import Any
 
 from garmin_mcp.user_context import get_garmin_client
 
@@ -55,7 +56,7 @@ def register_tools(app):
 
             # 3. Get defaults to map gear -> activity types
             defaults_list = get_garmin_client().get_gear_defaults(user_profile_id) or []
-            defaults_by_uuid = {}
+            defaults_by_uuid: dict[str, Any] = {}
             for d in defaults_list:
                 uuid = d.get("uuid")
                 activity_pk = d.get("activityTypePk")
