@@ -34,12 +34,12 @@ the lasting record lives in `doc/11-risks-and-technical-debt.md`
 | Package | Version | Fix | Notes |
 |---|---|---|---|
 | cryptography | 46.0.5 | 46.0.7 | Direct dep via Fernet + Entra OIDC validation |
-| requests | 2.32.4 | 2.33.0 | Pinned in `pyproject.toml` |
-| pyjwt | 2.11.0 | 2.12.0 | We use this for our own JWT signing |
-| python-dotenv | 1.0.1 | 1.2.2 | Pinned in `pyproject.toml` |
-| python-multipart | 0.0.22 | 0.0.26 | Used by Starlette form parsing in `/onboard` |
-| pygments | 2.19.2 | 2.20.0 | Transitive |
-| pytest | 9.0.2 | 9.0.3 | Dev only |
+| requests | 2.32.4 | 2.33.0 | Direct dep; pinned `==` in `pyproject.toml` |
+| pyjwt | 2.11.0 | 2.12.0 | Direct dep; we use this for our own JWT signing |
+| python-dotenv | 1.0.1 | 1.2.2 | Direct dep; pinned `==` in `pyproject.toml` |
+| python-multipart | 0.0.22 | 0.0.26 | Direct dep; used by Starlette form parsing in `/onboard` |
+| pygments | 2.19.2 | 2.20.0 | Transitive via pytest |
+| pytest | 9.0.2 | 9.0.3 | Dev only; pinned `==` in `[tool.uv.dev-dependencies]` |
 
 Wherever a track below adds `pip-audit` to CI, the dependency bumps
 must land in the same PR — otherwise the CI job goes red on its first
@@ -79,12 +79,14 @@ introduces a syntax error in `auth/jwt.py` — confirm the job fails.
 if desired` as a TODO. Running it locally surfaces 8 real CVEs.
 
 **What.**
-1. Bump pinned deps in `pyproject.toml`:
-   - `requests==2.32.4` → `requests>=2.33.0,<3`
-   - `python-dotenv==1.0.1` → `python-dotenv>=1.2.2,<2`
+1. Bump pinned deps in `pyproject.toml` — keep strict `==` pins to
+   prevent supply-chain attacks via unpinned transitive resolution:
+   - `requests==2.32.4` → `requests==2.33.0`
+   - `python-dotenv==1.0.1` → `python-dotenv==1.2.2`
 2. `uv lock` to refresh transitives (`cryptography`, `pyjwt`,
-   `python-multipart`, `pygments`).
-3. Bump `pytest>=9.0.3` in `[tool.uv.dev-dependencies]`.
+   `python-multipart`, `pygments`). Lock file captures exact hashes;
+   this is the supply-chain barrier.
+3. Bump `pytest==9.0.3` in `[tool.uv.dev-dependencies]`.
 4. Add a `pip-audit` step to `security.yml`'s `dependency-check` job,
    running `uvx pip-audit --strict` against an exported requirements
    file. Job fails on any unfixed CVE.
@@ -127,7 +129,8 @@ quote isn't caught until someone runs the script in anger.
 
 **What.** Same `infra.yml` (or a new `scripts.yml`) with a job that
 runs `bash -n` and `shellcheck` on every `*.sh` under `deploy/` and
-`infra/`. shellcheck is preinstalled on ubuntu-latest.
+`infra/`. shellcheck is *not* preinstalled on `ubuntu-latest` — install
+it via `sudo apt-get install -y shellcheck` in the job step.
 
 **Files.** `.github/workflows/infra.yml` (extend) or
 `.github/workflows/scripts.yml` (new)
@@ -194,14 +197,20 @@ still passes there (it does locally as of May 2026).
 
 **Size.** 1 line.
 
-### Track 1 PR boundary suggestion
+### Track 1 — PR strategy
 
-- **PR 9a:** items 1.1 + 1.2 + 1.7 — bug fix, dep bumps, real CVE
-  scanning, Python 3.14. Single coherent "make CI tell the truth" PR.
-- **PR 9b:** items 1.3 + 1.4 — infra + scripts validation. Self-
-  contained.
-- **PR 9c:** item 1.5 — link checker.
-- **PR 9d:** item 1.6 — workflow consolidation. Smallest, can wait.
+Each item below ships as its own PR. This keeps review surface small
+and lets CI turn green incrementally. The only dependency constraint:
+1.2 (pip-audit + dep bumps) should land before 1.3/1.4/1.5 so those
+workflows don't immediately red-line on stale deps.
+
+- **PR 1.1:** Fix `py_compile` recursion bug
+- **PR 1.2:** Wire `pip-audit` with dep bumps (covers pre-flight CVEs)
+- **PR 1.3:** Bicep validation workflow
+- **PR 1.4:** Bash syntax-check workflow
+- **PR 1.5:** Markdown link checker
+- **PR 1.6:** Workflow consolidation
+- **PR 1.7:** Add Python 3.14 to the matrix
 
 ---
 
@@ -224,13 +233,15 @@ build a `ToolCallGuard`. Two layers:
 
 Wire the guard inside `MultiUserClientCache.get_or_load` (after
 resolution): wrap each method invocation on the returned `Garmin`
-instance with a check, OR — cleaner — wrap the FastMCP tool dispatch
-with an async middleware that consults the guard before calling the
-tool.
+instance with a check. This "cache wrapping" approach is chosen over
+FastMCP middleware because FastMCP doesn't expose tool-dispatch
+middleware directly; patching `StreamableHTTPASGIApp` would be fragile
+across FastMCP upgrades. The wrapper lives in one place (the cache
+layer), and tools stay clean per ADR convention "tools never see auth".
 
-The middleware approach is preferred: tools stay clean (per ADR
-convention "tools never see auth"), and the rate-limit behavior is
-in one place.
+The guard checks both the per-user bucket and the global outbound
+bucket before every Garmin API call. If either bucket is exhausted,
+the call is rejected before reaching Garmin.
 
 **Files.**
 - `src/garmin_mcp/auth/throttle.py` — extend with `ToolCallGuard`
@@ -358,11 +369,17 @@ Workflow:
 NEW_KEY=$(python -c "from cryptography.fernet import Fernet; \
   print(Fernet.generate_key().decode())")
 
-# Inside the running container — re-encrypts every garmin_tokens row
-docker compose exec garmin-mcp \
-  garmin-mcp-rotate-data-key --old-key "$OLD" --new-key "$NEW_KEY"
+# Stop the service to avoid lock contention (offline rotation)
+docker compose stop garmin-mcp
+
+# Rotate — keys passed via env vars, never CLI args (avoids ps/shell-history leak)
+docker compose run --rm \
+  -e GARMIN_MCP_OLD_KEY="$OLD" \
+  -e GARMIN_MCP_NEW_KEY="$NEW_KEY" \
+  garmin-mcp garmin-mcp-rotate-data-key
 
 # Update env file with NEW_KEY, restart
+docker compose up -d
 ```
 
 Algorithm: open SQLite, read every `(user_id, encrypted_blob)`, decrypt
@@ -401,7 +418,7 @@ the VPS = all-user re-onboarding.
 set -euo pipefail
 
 # Required env (from /etc/garmin-mcp/backup.env, mode 0600):
-#   RESTIC_REPOSITORY  s3:s3.eu-central-1.amazonaws.com/my-bucket/garmin-mcp
+#   RESTIC_REPOSITORY  (e.g. s3:s3.eu-central-1.amazonaws.com/my-bucket/garmin-mcp)
 #   RESTIC_PASSWORD
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
@@ -425,7 +442,8 @@ volume, restart.
 
 **Files.**
 - `deploy/backup-offsite.sh` (new)
-- `deploy/backup-env.example` (new — template for backup.env)
+- `deploy/backup.env.example` (new — template; operator copies to
+  `/etc/garmin-mcp/backup.env` with mode 0600)
 - `deploy/README.md` — new "Off-site backup" subsection with the
   init + cron examples
 - `doc/07-deployment-view.md` — add the off-site arrow on the
@@ -558,11 +576,11 @@ done with it.
 
 ## Open questions for review
 
-1. **Track 2.1 — middleware vs cache wrapping.** Middleware has a
-   cleaner separation but is harder to wire (FastMCP doesn't expose
-   tool-dispatch middleware directly; we'd need to patch the
-   StreamableHTTPASGIApp). Cache wrapping is uglier but contained.
-   Codex preference?
+1. **Track 2.1 — middleware vs cache wrapping.**
+   **Resolved: cache wrapping.** FastMCP doesn't expose tool-dispatch
+   middleware; patching `StreamableHTTPASGIApp` would be fragile across
+   upgrades. The wrapper lives in `MultiUserClientCache` and is
+   contained in one module. (Updated in plan above.)
 
 2. **Track 2.2 — onboarding ticket without `on_success`.** The
    current `OnboardingManager.create_session()` accepts `on_success`
@@ -572,12 +590,12 @@ done with it.
    absence of `on_success` should produce a "you're done, close this
    tab" page. Verify the existing code handles this.
 
-3. **Track 3.1 — rotation should be online or offline?** Online (run
-   inside the container while serving traffic) is more convenient but
-   risks reading/writing rows the running app is also touching.
-   Offline (`docker compose stop`, run rotation, restart) is safer
-   but takes the service down. Recommendation: offline; the lock
-   contention isn't worth the risk for a quarterly operation.
+3. **Track 3.1 — rotation should be online or offline?**
+   **Resolved: offline** (`docker compose stop`, rotate, restart).
+   The lock contention risk isn't worth it for a quarterly operation.
+   A `/health` endpoint returning 503 during the maintenance window
+   lets any upstream load balancer drain gracefully. (Updated in plan
+   above.)
 
 4. **Track 4.1 — chain across daily file rotation.** The audit log
    rotates daily by filename. Should the hash chain continue across
@@ -588,9 +606,10 @@ done with it.
 5. **Track 1.6 — workflow consolidation.** Three options listed.
    Defaulting to (b). Confirm.
 
-6. **Order of execution.** Suggested: track 1 first (CI passes
-   green), then 2.1 + 2.2 (the two real runtime risks), then
-   3.1 (rotation tool — needed before there's enough data to make
+6. **Order of execution.** Each task is its own PR. Suggested
+   sequence: Track 1 items first (CI must pass green before anything
+   else), then 2.1 + 2.2 (the two real runtime risks), then 3.1
+   (rotation tool — needed before there's enough data to make
    re-onboarding everyone painful), then everything else.
 
 ---
