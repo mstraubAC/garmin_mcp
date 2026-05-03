@@ -1,0 +1,26 @@
+name: Docs validation
+
+on:
+  pull_request:
+    paths:
+      - '**.md'
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >
+            --no-progress
+            --accept 200..=299
+            --scheme file
+            README.md AGENTS.md doc/ deploy/ infra/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
