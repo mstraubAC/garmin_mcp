@@ -6,6 +6,7 @@ from garmin_mcp.auth.audit import AuditLog, _hash_line
 
 # verify_audit CLI ------------------------------------------------------------
 
+
 def _read_lines(log_dir):
     files = sorted(log_dir.glob("audit-*.log"))
     if not files:
@@ -105,8 +106,6 @@ def test_restart_continues_chain(tmp_path):
     for line_obj in lines:
         assert line_obj["prev_hash"] == prev
         prev = _hash_line(json.dumps(line_obj, separators=(",", ":"), ensure_ascii=False))
-
-
 
 
 from garmin_mcp.maintenance.verify_audit import verify as verify_audit  # noqa: E402
