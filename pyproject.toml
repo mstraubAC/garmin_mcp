@@ -33,6 +33,7 @@ garmin-mcp-verify-audit = "garmin_mcp.maintenance.verify_audit:main"
 [tool.uv]
 dev-dependencies = [
     "asgi-lifespan>=2.1.0",
+    "pre-commit>=4.6.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=0.25.2",
     "pytest-mock>=3.14.0",
