@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-garmin-mcp = "garmin_mcp:main"
+garmin-mcp = "garmin_mcp._stdio:main"
 garmin-mcp-http = "garmin_mcp.server:main"
 garmin-mcp-auth = "garmin_mcp.auth_cli:main"
 garmin-mcp-rotate-data-key = "garmin_mcp.maintenance.rotate_data_key:main"
@@ -72,7 +72,7 @@ python_version = "3.10"
 warn_unused_configs = true
 warn_redundant_casts = true
 ignore_missing_imports = true
-exclude = ["tests/", ".venv/", "src/garmin_mcp/__init__.py"]
+exclude = ["tests/", ".venv/", "src/garmin_mcp/__init__.py", "src/garmin_mcp/_stdio.py"]
 # Allow untyped defs — tool modules wrap untyped garminconnect API.
 disallow_untyped_defs = false
 
