@@ -1,0 +1,16 @@
+# Custom Caddy build with the rate-limit plugin (caddy-ratelimit).
+#
+# Multi-stage: the builder stage uses xcaddy to compile a caddy binary
+# with the rate-limit module baked in; the runtime stage copies only
+# the resulting binary into the standard caddy:2-alpine base.
+#
+# Rebuild when Caddy or the plugin publishes a new release:
+#   docker compose -f deploy/docker-compose.yml build caddy
+
+# ---- builder ---------------------------------------------------------------
+FROM caddy:2-builder AS builder
+RUN xcaddy build --with github.com/mholt/caddy-ratelimit
+
+# ---- runtime ---------------------------------------------------------------
+FROM caddy:2-alpine
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
