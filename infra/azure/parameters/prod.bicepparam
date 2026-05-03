@@ -9,9 +9,9 @@
 using '../main.bicep'
 
 param location = 'westeurope'
-param publicUrl = 'https://garmin-mcp.example.com'
+param publicUrl = 'https://garmin.mcp.s5b.org'
 param displayName = 'Garmin MCP Server'
-param uniqueName = 'garmin-mcp-server'
+param uniqueName = 'garmin-mcp-server-prod'
 
 // Optional: restrict sign-in to listed Entra user object IDs. Leave [] to
 // allow any user in your tenant.
