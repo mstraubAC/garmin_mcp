@@ -24,6 +24,15 @@ services:
     volumes:
       - garmin-mcp-data:/var/lib/garmin-mcp
       - garmin-mcp-logs:/var/log/garmin-mcp
+    # Container hardening: drop all capabilities, run with no-new-privileges,
+    # mount root filesystem read-only (data + log volumes are writable).
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:exec
     # Healthcheck is also defined inside the image so `docker ps` shows it
     # when run standalone, but compose-level retries+start_period help during
     # initial boot when the SQLite schema is still being built.
@@ -50,6 +59,14 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    # Caddy needs NET_BIND_SERVICE for ports <1024, but drop everything else.
+    cap_add:
+      - NET_BIND_SERVICE
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
     depends_on:
       garmin-mcp:
         condition: service_healthy
