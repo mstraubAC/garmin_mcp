@@ -25,7 +25,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS schema_version (
@@ -97,6 +97,12 @@ CREATE TABLE IF NOT EXISTS rate_limit_buckets (
     tokens REAL NOT NULL,
     last_refill_ms INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS garmin_tokens (
+    user_id TEXT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    encrypted_blob BLOB NOT NULL,
+    updated_at INTEGER NOT NULL
+);
 """
 
 
@@ -149,18 +155,27 @@ class Storage:
     def _init_schema(self) -> None:
         with self._lock:
             # `executescript` runs an implicit COMMIT before/after, so we
-            # can't wrap it in our own transaction.
+            # can't wrap it in our own transaction. CREATE TABLE IF NOT
+            # EXISTS makes this idempotent for both fresh DBs and v1 → v2
+            # upgrades (we only add tables; never alter existing columns).
             self._conn.executescript(_DDL)
             row = self._conn.execute(
                 "SELECT version FROM schema_version"
             ).fetchone()
             if row is None:
                 self._conn.execute(
-                    "INSERT INTO schema_version(version) VALUES (?)", (SCHEMA_VERSION,)
+                    "INSERT INTO schema_version(version) VALUES (?)",
+                    (SCHEMA_VERSION,),
                 )
-            elif row["version"] != SCHEMA_VERSION:
+            elif row["version"] < SCHEMA_VERSION:
+                # Forward-compat upgrade — DDL above already created any
+                # missing tables, so just record the new version.
+                self._conn.execute(
+                    "UPDATE schema_version SET version = ?", (SCHEMA_VERSION,)
+                )
+            elif row["version"] > SCHEMA_VERSION:
                 raise RuntimeError(
-                    f"schema version mismatch: db={row['version']} code={SCHEMA_VERSION}"
+                    f"schema version too new: db={row['version']} code={SCHEMA_VERSION}"
                 )
 
     # OAuth clients (DCR registry) -----------------------------------------
@@ -453,6 +468,38 @@ class Storage:
                 "display_name": display_name,
                 "created_at": _now_seconds(),
             }
+
+    # Garmin tokens (encrypted blob per user) ------------------------------
+
+    def save_garmin_token(self, user_id: str, encrypted_blob: bytes) -> None:
+        with self._tx() as conn:
+            conn.execute(
+                """INSERT INTO garmin_tokens(user_id, encrypted_blob, updated_at)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(user_id) DO UPDATE SET
+                     encrypted_blob = excluded.encrypted_blob,
+                     updated_at = excluded.updated_at""",
+                (user_id, encrypted_blob, _now_seconds()),
+            )
+
+    def load_garmin_token(self, user_id: str) -> bytes | None:
+        row = self._conn.execute(
+            "SELECT encrypted_blob FROM garmin_tokens WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        return bytes(row["encrypted_blob"]) if row else None
+
+    def delete_garmin_token(self, user_id: str) -> None:
+        with self._tx() as conn:
+            conn.execute("DELETE FROM garmin_tokens WHERE user_id = ?", (user_id,))
+
+    def has_garmin_token(self, user_id: str) -> bool:
+        return (
+            self._conn.execute(
+                "SELECT 1 FROM garmin_tokens WHERE user_id = ?", (user_id,)
+            ).fetchone()
+            is not None
+        )
 
     # Rate limit buckets (token bucket persistence) ------------------------
 

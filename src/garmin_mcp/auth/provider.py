@@ -36,7 +36,9 @@ from pydantic import AnyUrl
 
 from garmin_mcp.auth.audit import AuditLog
 from garmin_mcp.auth.entra import EntraError, EntraOIDCClient
+from garmin_mcp.auth.garmin_tokens import GarminTokenStore
 from garmin_mcp.auth.jwt import JwtSigner
+from garmin_mcp.auth.onboarding import OnboardingManager
 from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard
 from garmin_mcp.user_context import set_current_user_id
@@ -62,15 +64,30 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
         jwt_signer: JwtSigner,
         registration_guard: RegistrationGuard,
         audit: AuditLog,
+        garmin_tokens: GarminTokenStore | None = None,
+        onboarding: OnboardingManager | None = None,
+        public_url: str | None = None,
         default_scopes: list[str] | None = None,
         access_token_ttl_seconds: int = 3600,
         refresh_token_ttl_seconds: int = 30 * 24 * 3600,
     ):
+        # `garmin_tokens` and `onboarding` are required together: if a user
+        # signs in via Entra but has no stored Garmin tokens, we must redirect
+        # them through the onboarding flow before issuing the OAuth code.
+        # Both being None is the legacy single-Garmin-account mode used in
+        # Step 4 (every authenticated user shares one Garmin login).
+        if (garmin_tokens is None) != (onboarding is None):
+            raise ValueError(
+                "garmin_tokens and onboarding must be provided together"
+            )
         self.storage = storage
         self.entra = entra
         self.jwt_signer = jwt_signer
         self.guard = registration_guard
         self.audit = audit
+        self.garmin_tokens = garmin_tokens
+        self.onboarding = onboarding
+        self._public_url = (public_url or "").rstrip("/")
         self._default_scopes = default_scopes or ["mcp.use"]
         self._access_ttl = access_token_ttl_seconds
         self._refresh_ttl = refresh_token_ttl_seconds
@@ -158,8 +175,10 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
     async def complete_authorization(self, state: str, entra_code: str) -> str:
         """Called by the /callback Starlette route after Entra redirects back.
 
-        Returns the URL to redirect the browser to (Claude's original
-        redirect_uri with our auth code attached).
+        Returns a URL to redirect the browser to. For users with Garmin
+        tokens already on file this is Claude's redirect_uri with our auth
+        code; for first-time users it's `/onboard?ticket=...` and the OAuth
+        completion is deferred until onboarding succeeds.
         """
         pending = self.storage.consume_pending_authorization(state)
         if pending is None:
@@ -191,23 +210,29 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
             display_name=identity.name or identity.preferred_username,
         )
 
-        our_code = secrets.token_urlsafe(24)
-        self.storage.store_authorization_code(
-            code=our_code,
-            client_id=pending["client_id"],
-            user_id=user["user_id"],
-            redirect_uri=pending["claude_redirect_uri"],
-            redirect_uri_provided_explicitly=pending["redirect_uri_provided_explicitly"],
-            code_challenge=pending["code_challenge"],
-            scopes=pending["scopes"],
-            resource=pending["resource"],
-        )
+        # If this server is wired for multi-user Garmin (i.e. has a token
+        # store + onboarding manager) and the user hasn't onboarded yet,
+        # detour through the onboarding flow before issuing the OAuth code.
+        if (
+            self.garmin_tokens is not None
+            and self.onboarding is not None
+            and not self.garmin_tokens.has(user["user_id"])
+        ):
+            session = self.onboarding.create_session(
+                user_id=user["user_id"],
+                on_success=lambda uid: self._issue_code_for(pending, uid),
+            )
+            self.audit.record(
+                "authorize.callback",
+                outcome="needs_onboarding",
+                client_id=pending["client_id"],
+                user_id=user["user_id"],
+            )
+            return f"{self._public_url}/onboard?ticket={session.ticket}"
 
-        params = {"code": our_code}
-        if pending["claude_state"]:
-            params["state"] = pending["claude_state"]
-        sep = "&" if "?" in pending["claude_redirect_uri"] else "?"
-        redirect = f"{pending['claude_redirect_uri']}{sep}{urlencode(params)}"
+        # User has Garmin tokens (or we're in single-account mode) — issue
+        # our auth code immediately and bounce back to Claude.
+        redirect = self._issue_code_for(pending, user["user_id"])
         self.audit.record(
             "authorize.callback",
             outcome="ok",
@@ -215,6 +240,29 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
             user_id=user["user_id"],
         )
         return redirect
+
+    def _issue_code_for(self, pending: dict, user_id: str) -> str:
+        """Mint our auth code, persist it, and return the Claude redirect URL.
+
+        Called either directly from `complete_authorization` (existing user)
+        or from the onboarding manager's `on_success` callback (new user
+        finishing the Garmin login)."""
+        our_code = secrets.token_urlsafe(24)
+        self.storage.store_authorization_code(
+            code=our_code,
+            client_id=pending["client_id"],
+            user_id=user_id,
+            redirect_uri=pending["claude_redirect_uri"],
+            redirect_uri_provided_explicitly=pending["redirect_uri_provided_explicitly"],
+            code_challenge=pending["code_challenge"],
+            scopes=pending["scopes"],
+            resource=pending["resource"],
+        )
+        params = {"code": our_code}
+        if pending["claude_state"]:
+            params["state"] = pending["claude_state"]
+        sep = "&" if "?" in pending["claude_redirect_uri"] else "?"
+        return f"{pending['claude_redirect_uri']}{sep}{urlencode(params)}"
 
     # Authorization code → token --------------------------------------------
 
