@@ -7,8 +7,19 @@ from garth.exc import GarthHTTPError
 from mcp.server.fastmcp import FastMCP
 
 from garmin_mcp.tools import (
-    activities, challenges, data, devices, gear, health, nutrition,
-    training, user_profile, weight, womens_health, workout_templates, workouts,
+    activities,
+    challenges,
+    data,
+    devices,
+    gear,
+    health,
+    nutrition,
+    training,
+    user_profile,
+    weight,
+    womens_health,
+    workout_templates,
+    workouts,
 )
 from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
 
