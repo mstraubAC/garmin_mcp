@@ -10,6 +10,7 @@ the first line's `prev_hash` should be `null`.
 Exit code 0 if the chain is intact; exit code 1 with a message if a broken
 link is found.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -47,8 +48,7 @@ def verify(path: Path) -> int:
             claimed = obj.get("prev_hash")
             if claimed != prev_hash:
                 print(
-                    f"line {lineno}: prev_hash mismatch — "
-                    f"expected {prev_hash!r}, got {claimed!r}",
+                    f"line {lineno}: prev_hash mismatch — expected {prev_hash!r}, got {claimed!r}",
                     file=sys.stderr,
                 )
                 errors += 1

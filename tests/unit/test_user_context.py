@@ -1,5 +1,5 @@
 """Unit tests for the per-user client cache."""
-import time
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,7 +16,6 @@ from garmin_mcp.user_context import (
     set_client_cache,
     set_current_user_id,
 )
-
 
 # Helpers --------------------------------------------------------------------
 
@@ -47,6 +46,7 @@ def _seed_user_with_token(storage, token_store, user_id="u1", token="t"):
 def _fake_garmin_factory():
     """Returns a callable that produces a fresh MagicMock with a `garth`
     attribute whose `loads()` doesn't fail."""
+
     def factory():
         m = MagicMock(name="GarminClient")
         m.garth.loads = MagicMock()
@@ -82,9 +82,7 @@ def test_single_user_cache_returns_same_client_for_any_user():
 
 def test_multi_user_cache_loads_token_then_caches(storage, token_store):
     _seed_user_with_token(storage, token_store, "u1", "garth-blob-1")
-    cache = MultiUserClientCache(
-        token_store, garmin_factory=_fake_garmin_factory()
-    )
+    cache = MultiUserClientCache(token_store, garmin_factory=_fake_garmin_factory())
     c1 = cache.get_or_load("u1")
     c2 = cache.get_or_load("u1")
     assert c1 is c2  # cached on second call
@@ -94,9 +92,7 @@ def test_multi_user_cache_loads_token_then_caches(storage, token_store):
 def test_multi_user_cache_isolates_users(storage, token_store):
     _seed_user_with_token(storage, token_store, "u1", "blob-1")
     _seed_user_with_token(storage, token_store, "u2", "blob-2")
-    cache = MultiUserClientCache(
-        token_store, garmin_factory=_fake_garmin_factory()
-    )
+    cache = MultiUserClientCache(token_store, garmin_factory=_fake_garmin_factory())
     c1 = cache.get_or_load("u1")
     c2 = cache.get_or_load("u2")
     assert c1 is not c2
@@ -131,9 +127,7 @@ def test_multi_user_cache_idle_ttl_evicts(storage, token_store, monkeypatch):
 
 def test_multi_user_cache_invalidate_drops_entry(storage, token_store):
     _seed_user_with_token(storage, token_store, "u1", "blob")
-    cache = MultiUserClientCache(
-        token_store, garmin_factory=_fake_garmin_factory()
-    )
+    cache = MultiUserClientCache(token_store, garmin_factory=_fake_garmin_factory())
     c1 = cache.get_or_load("u1")
     cache.invalidate("u1")
     c2 = cache.get_or_load("u1")
@@ -150,19 +144,18 @@ def test_multi_user_cache_invalidate_unknown_is_noop(token_store):
 
 def test_set_client_cache_replaces_active_cache(storage, token_store):
     _seed_user_with_token(storage, token_store, "u1", "blob")
-    multi = MultiUserClientCache(
-        token_store, garmin_factory=_fake_garmin_factory()
-    )
+    multi = MultiUserClientCache(token_store, garmin_factory=_fake_garmin_factory())
     set_client_cache(multi)
     set_current_user_id("u1")
     from garmin_mcp.user_context import get_garmin_client
+
     assert get_garmin_client() is multi.get_or_load("u1")
 
 
 # RateLimitedGarminProxy ----------------------------------------------------
 
 
-from garmin_mcp.auth.throttle import ToolCallGuard, RateLimitExceededError
+from garmin_mcp.auth.throttle import RateLimitExceededError, ToolCallGuard
 from garmin_mcp.user_context import (
     GarminSessionExpiredError,
     RateLimitedGarminProxy,
@@ -178,7 +171,11 @@ def _make_proxy(storage, client=None, user_id="u1", guard=None, cache=None):
     if cache is None:
         cache = MagicMock(name="ClientCache")
     return RateLimitedGarminProxy(
-        client, user_id, guard, cache=cache, onboarding_url="https://example.com/onboard"
+        client,
+        user_id,
+        guard,
+        cache=cache,
+        onboarding_url="https://example.com/onboard",
     )
 
 

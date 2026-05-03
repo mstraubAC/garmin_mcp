@@ -2,12 +2,10 @@
 Device-related functions for Garmin Connect MCP Server
 """
 
-import json
 import datetime
-from typing import Any, Dict, List, Optional, Union
+import json
 
 from garmin_mcp.user_context import get_garmin_client
-
 
 
 def register_tools(app):
@@ -27,8 +25,7 @@ def register_tools(app):
                 # Extract only essential device information
                 device_info = {
                     "device_id": device.get("deviceId"),
-                    "device_name": device.get("displayName")
-                    or device.get("productDisplayName"),
+                    "device_name": device.get("displayName") or device.get("productDisplayName"),
                     "model": device.get("partNumber"),
                     "manufacturer": device.get("manufacturerName"),
                     "serial_number": device.get("serialNumber"),
@@ -86,7 +83,7 @@ def register_tools(app):
             return f"Error retrieving last used device: {str(e)}"
 
     @app.tool()
-    async def get_device_settings(device_id: Union[int, str]) -> str:
+    async def get_device_settings(device_id: int | str) -> str:
         """Get settings for a specific Garmin device
 
         Returns device configuration including time/date format, units,
@@ -121,9 +118,7 @@ def register_tools(app):
             if activity_tracking:
                 tracking_info = {}
                 if activity_tracking.get("moveAlertEnabled") is not None:
-                    tracking_info["move_alert_enabled"] = activity_tracking.get(
-                        "moveAlertEnabled"
-                    )
+                    tracking_info["move_alert_enabled"] = activity_tracking.get("moveAlertEnabled")
                 if activity_tracking.get("pulseOxSleepTrackingEnabled") is not None:
                     tracking_info["pulse_ox_sleep_tracking"] = activity_tracking.get(
                         "pulseOxSleepTrackingEnabled"
@@ -170,9 +165,7 @@ def register_tools(app):
             primary_device_id = primary_device.get("deviceId")
 
             # Get primary training devices list
-            primary_devices = data.get("PrimaryTrainingDevices", {}).get(
-                "deviceWeights", []
-            )
+            primary_devices = data.get("PrimaryTrainingDevices", {}).get("deviceWeights", [])
 
             curated = {
                 "primary_device_id": primary_device_id,
@@ -197,9 +190,7 @@ def register_tools(app):
             # Add wearable device count
             wearable_data = data.get("WearableDevices", {})
             if wearable_data.get("wearableDeviceCount"):
-                curated["wearable_device_count"] = wearable_data.get(
-                    "wearableDeviceCount"
-                )
+                curated["wearable_device_count"] = wearable_data.get("wearableDeviceCount")
 
             return json.dumps(curated, indent=2)
         except Exception as e:
@@ -241,9 +232,7 @@ def register_tools(app):
                 curated_day = {k: v for k, v in curated_day.items() if v is not None}
                 curated_days.append(curated_day)
 
-            return json.dumps(
-                {"device_id": device_id, "solar_data": curated_days}, indent=2
-            )
+            return json.dumps({"device_id": device_id, "solar_data": curated_days}, indent=2)
         except Exception as e:
             return f"Error retrieving solar data: {str(e)}"
 

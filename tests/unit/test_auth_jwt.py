@@ -1,4 +1,5 @@
 """Unit tests for the JWT signer/verifier."""
+
 import time
 
 import jwt as pyjwt

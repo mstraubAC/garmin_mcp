@@ -14,6 +14,7 @@ Usage:
     if not await bucket.try_consume("register:1.2.3.4"):
         return 429
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -105,7 +106,7 @@ class RegistrationGuard:
             return True
         if not header_value or not header_value.startswith("Bearer "):
             return False
-        return header_value[len("Bearer "):].strip() == self._shared_token
+        return header_value[len("Bearer ") :].strip() == self._shared_token
 
     def check_redirect_uri(self, uri: str) -> bool:
         if not uri or len(uri) > self._max_field_length:
@@ -148,35 +149,25 @@ class ToolCallGuard:
     """
 
     def __init__(self, storage: Storage):
-        self._per_user = TokenBucket(
-            storage, capacity=60, refill_per_second=60 / 60
-        )
-        self._global = TokenBucket(
-            storage, capacity=120, refill_per_second=120 / 60
-        )
+        self._per_user = TokenBucket(storage, capacity=60, refill_per_second=60 / 60)
+        self._global = TokenBucket(storage, capacity=120, refill_per_second=120 / 60)
 
     async def try_consume(self, user_id: str) -> bool:
         """Returns True if both per-user and global buckets allow the call."""
         if not await self._per_user.try_consume(f"tool:{user_id}"):
             return False
-        if not await self._global.try_consume("tool:global"):
-            return False
-        return True
+        return await self._global.try_consume("tool:global")
 
     def try_consume_sync(self, user_id: str) -> bool:
         """Sync variant for test and non-async call sites."""
         if not self._per_user.try_consume_sync(f"tool:{user_id}"):
             return False
-        if not self._global.try_consume_sync("tool:global"):
-            return False
-        return True
+        return self._global.try_consume_sync("tool:global")
 
 
 class RateLimitExceededError(Exception):
     """Raised when a tool call is blocked by the ToolCallGuard."""
 
     def __init__(self, user_id: str):
-        super().__init__(
-            f"Rate limit exceeded for user {user_id} — slow down and retry"
-        )
+        super().__init__(f"Rate limit exceeded for user {user_id} — slow down and retry")
         self.user_id = user_id

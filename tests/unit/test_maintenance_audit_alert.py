@@ -1,10 +1,9 @@
 """Unit tests for the audit alert anomaly detector."""
+
 import json
 import time
 
-import pytest
-
-from garmin_mcp.maintenance.audit_alert import alert_once, _parse_iso
+from garmin_mcp.maintenance.audit_alert import _parse_iso, alert_once
 
 
 def _write_audit(path, events):
@@ -19,6 +18,7 @@ def test_alert_once_no_file_does_nothing(tmp_path):
     """No audit file → no alert."""
     # Should not raise.
     import asyncio
+
     asyncio.run(alert_once(str(tmp_path)))
 
 
@@ -27,13 +27,26 @@ def test_alert_once_below_threshold_does_not_warn(tmp_path, caplog):
     now = time.time()
     ts = time.strftime("%Y-%m-%d", time.gmtime(now))
     audit_file = tmp_path / f"audit-{ts}.log"
-    _write_audit(audit_file, [
-        {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - 30)), "event": "register.success"},
-        {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - 20)), "event": "register.success"},
-        {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - 10)), "event": "register.success"},
-    ])
+    _write_audit(
+        audit_file,
+        [
+            {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - 30)),
+                "event": "register.success",
+            },
+            {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - 20)),
+                "event": "register.success",
+            },
+            {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - 10)),
+                "event": "register.success",
+            },
+        ],
+    )
 
     import asyncio
+
     asyncio.run(alert_once(str(tmp_path), register_threshold=10, window_minutes=5))
     assert "AUDIT_ALERT" not in caplog.text
 
@@ -45,13 +58,16 @@ def test_alert_once_above_threshold_warns(tmp_path, caplog):
     audit_file = tmp_path / f"audit-{ts}.log"
     events = []
     for i in range(15):
-        events.append({
-            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - i * 10)),
-            "event": "register.success",
-        })
+        events.append(
+            {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - i * 10)),
+                "event": "register.success",
+            }
+        )
     _write_audit(audit_file, events)
 
     import asyncio
+
     asyncio.run(alert_once(str(tmp_path), register_threshold=10, window_minutes=5))
     assert "AUDIT_ALERT" in caplog.text
 
@@ -61,12 +77,23 @@ def test_alert_once_ignores_other_events(tmp_path, caplog):
     now = time.time()
     ts = time.strftime("%Y-%m-%d", time.gmtime(now))
     audit_file = tmp_path / f"audit-{ts}.log"
-    _write_audit(audit_file, [
-        {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)), "event": "token.issued"},
-        {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)), "event": "token.issued"},
-    ] * 20)
+    _write_audit(
+        audit_file,
+        [
+            {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
+                "event": "token.issued",
+            },
+            {
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
+                "event": "token.issued",
+            },
+        ]
+        * 20,
+    )
 
     import asyncio
+
     asyncio.run(alert_once(str(tmp_path), register_threshold=1, window_minutes=5))
     assert "AUDIT_ALERT" not in caplog.text
 

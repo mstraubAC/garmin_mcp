@@ -22,16 +22,17 @@ In Step 4 the same single Garmin account (env-var creds) backs every
 authenticated user. Step 5 replaces `SingleUserClientCache` with a
 per-user lookup that decrypts each user's stored Garmin tokens.
 """
+
 from __future__ import annotations
 
 import asyncio
 import os
 import sys
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
-from typing import Awaitable, Callable
 
-from mcp.server.fastmcp import FastMCP
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+from mcp.server.fastmcp import FastMCP
 from pydantic import AnyHttpUrl
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -39,6 +40,17 @@ from starlette.responses import JSONResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
+from garmin_mcp.auth.audit import AuditLog
+from garmin_mcp.auth.entra import EntraOIDCClient
+from garmin_mcp.auth.garmin_tokens import GarminTokenStore
+from garmin_mcp.auth.jwt import JwtSigner
+from garmin_mcp.auth.onboarding import OnboardingManager
+from garmin_mcp.auth.onboarding_routes import build_routes as build_onboarding_routes
+from garmin_mcp.auth.provider import GarminMcpProvider
+from garmin_mcp.auth.storage import Storage
+from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket, ToolCallGuard
+from garmin_mcp.maintenance.audit_alert import audit_alert_loop
+from garmin_mcp.maintenance.cleanup import cleanup_loop
 from garmin_mcp.tools import (
     activities,
     challenges,
@@ -54,23 +66,10 @@ from garmin_mcp.tools import (
     workout_templates,
     workouts,
 )
-from garmin_mcp.auth.audit import AuditLog
-from garmin_mcp.auth.entra import EntraOIDCClient
-from garmin_mcp.auth.garmin_tokens import GarminTokenStore
-from garmin_mcp.auth.jwt import JwtSigner
-from garmin_mcp.auth.onboarding import OnboardingManager
-from garmin_mcp.auth.onboarding_routes import build_routes as build_onboarding_routes
-from garmin_mcp.auth.provider import GarminMcpProvider
-from garmin_mcp.auth.storage import Storage
-from garmin_mcp.auth.throttle import RegistrationGuard, TokenBucket, ToolCallGuard
-from garmin_mcp.maintenance.audit_alert import audit_alert_loop
-from garmin_mcp.maintenance.cleanup import cleanup_loop
 from garmin_mcp.user_context import (
     ClientCache,
-    GarminSessionExpiredError,
     MultiUserClientCache,
     SingleUserClientCache,
-    UserNotOnboardedError,
     set_client_cache,
 )
 
@@ -131,8 +130,10 @@ def _default_client_provider():
     # Legacy single-user mode: uses Garmin creds from env vars.
     # In production (make_production_app), this path is never hit —
     # client_cache is passed directly.
-    from garmin_mcp.tools._token_utils import init_api
     import os as _os
+
+    from garmin_mcp.tools._token_utils import init_api
+
     email = _os.environ.get("GARMIN_EMAIL")
     password = _os.environ.get("GARMIN_PASSWORD")
     client = init_api(email, password)
@@ -197,8 +198,7 @@ def make_app(
             set_client_cache(SingleUserClientCache(client_provider()))
 
         bg_tasks: list[asyncio.Task] = [
-            asyncio.create_task(factory())
-            for factory in (background_task_factories or [])
+            asyncio.create_task(factory()) for factory in (background_task_factories or [])
         ]
         try:
             async with mcp.session_manager.run():
@@ -219,6 +219,7 @@ def make_app(
         routes.extend(build_onboarding_routes(onboarding_manager))
     # Serve vendored static assets (htmx) from the auth module.
     import os as _os
+
     _static_dir = _os.path.join(_os.path.dirname(__file__), "auth", "static")
     routes.append(Mount("/static", app=StaticFiles(directory=_static_dir), name="static"))
     routes.append(Mount("/", app=mcp_app))

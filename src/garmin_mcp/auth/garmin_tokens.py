@@ -8,6 +8,7 @@ decrypt and hand the string back so callers can pass it straight to
 The Fernet key comes from the `GARMIN_MCP_DATA_KEY` env var. Generate one
 with `cryptography.fernet.Fernet.generate_key().decode()`.
 """
+
 from __future__ import annotations
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -27,9 +28,7 @@ class GarminTokenStore:
         try:
             self._fernet = Fernet(fernet_key)
         except (ValueError, TypeError) as e:
-            raise ValueError(
-                f"invalid Fernet key (must be 32 url-safe base64 bytes): {e}"
-            ) from e
+            raise ValueError(f"invalid Fernet key (must be 32 url-safe base64 bytes): {e}") from e
         self._storage = storage
 
     def save(self, user_id: str, garth_dump: str) -> None:

@@ -60,6 +60,20 @@ jobs:
         uv run python -m compileall src/garmin_mcp -q
         echo "✅ All Python files have valid syntax"
 
+    - name: Lint with ruff
+      run: |
+        uv run ruff check src/ tests/
+        echo "✅ Ruff linting passed"
+
+    - name: Format check with ruff
+      run: |
+        uv run ruff format --check src/ tests/
+        echo "✅ Ruff formatting passed"
+
+    - name: Type check with mypy (informational — types not fully annotated)
+      run: |
+        uv run mypy src/garmin_mcp || echo "⚠️  Mypy found type issues (non-blocking)"
+
     - name: Check import structure
       run: |
         uv run python -c "

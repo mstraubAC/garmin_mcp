@@ -3,7 +3,6 @@ Gear management functions for Garmin Connect MCP Server
 """
 
 import json
-from typing import Any, Dict, List, Optional, Union
 
 from garmin_mcp.user_context import get_garmin_client
 
@@ -60,9 +59,7 @@ def register_tools(app):
             for d in defaults_list:
                 uuid = d.get("uuid")
                 activity_pk = d.get("activityTypePk")
-                activity_type = ACTIVITY_TYPE_MAPPING.get(
-                    activity_pk, f"activity_{activity_pk}"
-                )
+                activity_type = ACTIVITY_TYPE_MAPPING.get(activity_pk, f"activity_{activity_pk}")
                 if uuid not in defaults_by_uuid:
                     defaults_by_uuid[uuid] = []
                 defaults_by_uuid[uuid].append(activity_type)
@@ -107,9 +104,7 @@ def register_tools(app):
                         if stats:
                             gear_item["stats"] = {
                                 "total_activities": stats.get("totalActivities"),
-                                "total_distance_km": round(
-                                    stats.get("totalDistance", 0) / 1000, 1
-                                ),
+                                "total_distance_km": round(stats.get("totalDistance", 0) / 1000, 1),
                             }
                     except Exception:
                         pass  # Stats unavailable for this gear
@@ -127,9 +122,7 @@ def register_tools(app):
             # Build defaults summary (activity -> gear name)
             defaults_summary = {}
             for uuid, activities in defaults_by_uuid.items():
-                gear_name = next(
-                    (g["name"] for g in curated_gear if g["uuid"] == uuid), None
-                )
+                gear_name = next((g["name"] for g in curated_gear if g["uuid"] == uuid), None)
                 for activity in activities:
                     defaults_summary[activity] = gear_name
 

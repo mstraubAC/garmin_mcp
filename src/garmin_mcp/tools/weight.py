@@ -1,12 +1,11 @@
 """
 Weight management functions for Garmin Connect MCP Server
 """
-import json
+
 import datetime
-from typing import Any, Dict, List, Optional, Union
+import json
 
 from garmin_mcp.user_context import get_garmin_client
-
 
 
 def register_tools(app):
@@ -41,7 +40,7 @@ def register_tools(app):
                 "date_range": {"start": start_date, "end": end_date},
                 "measurement_count": len(all_measurements),
                 "days_with_data": len(daily_summaries),
-                "measurements": []
+                "measurements": [],
             }
 
             for w in all_measurements:
@@ -62,9 +61,7 @@ def register_tools(app):
                 curated["measurements"].append(measurement)
 
             # Sort by date descending (most recent first)
-            curated["measurements"].sort(
-                key=lambda x: x.get("date") or "", reverse=True
-            )
+            curated["measurements"].sort(key=lambda x: x.get("date") or "", reverse=True)
 
             # Include average if available
             total_avg = data.get("totalAverage", {})
@@ -97,7 +94,7 @@ def register_tools(app):
             curated = {
                 "date": date,
                 "measurement_count": len(weight_list),
-                "measurements": []
+                "measurements": [],
             }
 
             for w in weight_list:
@@ -137,12 +134,15 @@ def register_tools(app):
         try:
             # API returns count of deleted entries
             deleted_count = get_garmin_client().delete_weigh_ins(date, delete_all=delete_all)
-            return json.dumps({
-                "status": "success",
-                "date": date,
-                "deleted_count": deleted_count if isinstance(deleted_count, int) else 0,
-                "message": f"Weight measurements deleted for {date}"
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "date": date,
+                    "deleted_count": deleted_count if isinstance(deleted_count, int) else 0,
+                    "message": f"Weight measurements deleted for {date}",
+                },
+                indent=2,
+            )
         except Exception as e:
             return f"Error deleting weight measurements: {str(e)}"
 
@@ -155,14 +155,17 @@ def register_tools(app):
             unit_key: Unit of weight ('kg' or 'lb')
         """
         try:
-            result = get_garmin_client().add_weigh_in(weight=weight, unitKey=unit_key)
+            get_garmin_client().add_weigh_in(weight=weight, unitKey=unit_key)
             # Return structured response
-            return json.dumps({
-                "status": "success",
-                "weight": weight,
-                "unit": unit_key,
-                "message": "Weight measurement added successfully"
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "weight": weight,
+                    "unit": unit_key,
+                    "message": "Weight measurement added successfully",
+                },
+                indent=2,
+            )
         except Exception as e:
             return f"Error adding weight measurement: {str(e)}"
 
@@ -171,7 +174,7 @@ def register_tools(app):
         weight: float,
         unit_key: str = "kg",
         date_timestamp: str = None,
-        gmt_timestamp: str = None
+        gmt_timestamp: str = None,
     ) -> str:
         """Add a new weight measurement with specific timestamps
 
@@ -185,24 +188,27 @@ def register_tools(app):
             if date_timestamp is None or gmt_timestamp is None:
                 # Generate timestamps if not provided
                 now = datetime.datetime.now()
-                date_timestamp = now.strftime('%Y-%m-%dT%H:%M:%S')
-                gmt_timestamp = now.astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
+                date_timestamp = now.strftime("%Y-%m-%dT%H:%M:%S")
+                gmt_timestamp = now.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
-            result = get_garmin_client().add_weigh_in_with_timestamps(
+            get_garmin_client().add_weigh_in_with_timestamps(
                 weight=weight,
                 unitKey=unit_key,
                 dateTimestamp=date_timestamp,
-                gmtTimestamp=gmt_timestamp
+                gmtTimestamp=gmt_timestamp,
             )
             # Return structured response
-            return json.dumps({
-                "status": "success",
-                "weight": weight,
-                "unit": unit_key,
-                "timestamp_local": date_timestamp,
-                "timestamp_gmt": gmt_timestamp,
-                "message": "Weight measurement added successfully"
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "weight": weight,
+                    "unit": unit_key,
+                    "timestamp_local": date_timestamp,
+                    "timestamp_gmt": gmt_timestamp,
+                    "message": "Weight measurement added successfully",
+                },
+                indent=2,
+            )
         except Exception as e:
             return f"Error adding weight measurement with timestamps: {str(e)}"
 

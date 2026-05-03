@@ -1,6 +1,6 @@
 """Unit tests for the SQLite storage layer."""
+
 import time
-import uuid
 
 import pytest
 
@@ -62,9 +62,7 @@ def test_cleanup_unused_clients_drops_old_unused(storage):
     storage.register_client("active", None, {}, None)
     storage.mark_client_used("active")
 
-    deleted = storage.cleanup_unused_clients(
-        never_used_after=86400, idle_after=86400 * 90
-    )
+    deleted = storage.cleanup_unused_clients(never_used_after=86400, idle_after=86400 * 90)
     assert deleted == 1
     assert storage.get_client("old-unused") is None
     assert storage.get_client("recent") is not None
@@ -79,9 +77,7 @@ def test_cleanup_unused_clients_drops_idle(storage):
         "UPDATE oauth_clients SET last_used_at = ? WHERE client_id = ?",
         (int(time.time()) - 86400 * 100, "idle"),
     )
-    deleted = storage.cleanup_unused_clients(
-        never_used_after=86400, idle_after=86400 * 90
-    )
+    deleted = storage.cleanup_unused_clients(never_used_after=86400, idle_after=86400 * 90)
     assert deleted == 1
 
 
@@ -183,9 +179,7 @@ def test_consume_authorization_code(storage):
 
 
 def test_load_authorization_code_does_not_consume(storage):
-    storage.store_authorization_code(
-        "code-2", "c", "u", "https://x/cb", True, "ch", [], None
-    )
+    storage.store_authorization_code("code-2", "c", "u", "https://x/cb", True, "ch", [], None)
     assert storage.load_authorization_code("code-2") is not None
     # still loadable
     assert storage.load_authorization_code("code-2") is not None
@@ -203,9 +197,7 @@ def test_authorization_code_expired_returns_none(storage):
 
 
 def test_refresh_token_lifecycle(storage):
-    storage.store_refresh_token(
-        "hash1", "c", "u", ["mcp.use"], expires_at=int(time.time()) + 3600
-    )
+    storage.store_refresh_token("hash1", "c", "u", ["mcp.use"], expires_at=int(time.time()) + 3600)
     got = storage.load_refresh_token("hash1")
     assert got is not None
     assert got["user_id"] == "u"

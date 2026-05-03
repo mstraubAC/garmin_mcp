@@ -6,9 +6,9 @@ ID tokens, and validates ID-token signatures against the tenant's JWKS.
 Uses httpx (already pulled in transitively via mcp). No Microsoft SDK
 dependency — keeps the deploy small.
 """
+
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlencode
@@ -21,6 +21,7 @@ from jwt import PyJWKClient
 @dataclass
 class EntraIdentity:
     """Subset of an Entra ID-token's claims that we actually use."""
+
     sub: str
     tid: str
     email: str | None

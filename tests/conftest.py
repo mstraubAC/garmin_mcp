@@ -1,12 +1,14 @@
 """
 Shared pytest fixtures for Garmin MCP testing
 """
-import pytest
-from unittest.mock import Mock
+
 from datetime import datetime, timedelta
+from unittest.mock import Mock
+
+import pytest
 from mcp.server.fastmcp import FastMCP
 
-from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
+from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
 
 
 @pytest.fixture
@@ -79,16 +81,13 @@ def sample_activity():
     return {
         "activityId": 12345678901,
         "activityName": "Morning Run",
-        "activityType": {
-            "typeKey": "running",
-            "typeId": 1
-        },
+        "activityType": {"typeKey": "running", "typeId": 1},
         "startTimeLocal": "2024-01-15 07:00:00",
         "distance": 5000.0,
         "duration": 1800.0,
         "averageHR": 145,
         "maxHR": 165,
-        "calories": 350
+        "calories": 350,
     }
 
 
@@ -100,7 +99,7 @@ def sample_steps_data():
         "dailyStepGoal": 8000,
         "stepGoalDistance": 10000,
         "totalDistance": 7500,
-        "wellnessDistanceUnit": "meter"
+        "wellnessDistanceUnit": "meter",
     }
 
 
@@ -126,15 +125,12 @@ def sample_sleep_data():
                     "value": 85,
                     "qualifierKey": "GOOD",
                     "optimalStart": 75,
-                    "optimalEnd": 100
+                    "optimalEnd": 100,
                 }
-            }
+            },
         },
-        "wellnessSpO2SleepSummaryDTO": {
-            "averageSpo2": 96,
-            "lowestSpo2": 93
-        },
-        "avgOvernightHrv": 45
+        "wellnessSpO2SleepSummaryDTO": {"averageSpo2": 96, "lowestSpo2": 93},
+        "avgOvernightHrv": 45,
     }
 
 
@@ -145,20 +141,22 @@ def sample_heart_rate_data():
         "restingHeartRate": 55,
         "maxHeartRate": 180,
         "minHeartRate": 45,
-        "lastSevenDaysAvgRestingHeartRate": 57
+        "lastSevenDaysAvgRestingHeartRate": 57,
     }
 
 
 @pytest.fixture
 def sample_body_battery_data():
     """Sample body battery data matching Garmin API response format"""
-    return [{
-        "startTimestampGMT": 1705276800000,
-        "endTimestampGMT": 1705363200000,
-        "chargedValue": 100,
-        "drainedValue": 25,
-        "bodyBatteryMostRecentValue": 75
-    }]
+    return [
+        {
+            "startTimestampGMT": 1705276800000,
+            "endTimestampGMT": 1705363200000,
+            "chargedValue": 100,
+            "drainedValue": 25,
+            "bodyBatteryMostRecentValue": 75,
+        }
+    ]
 
 
 @pytest.fixture
@@ -169,7 +167,7 @@ def sample_training_status():
         "load7Day": 250,
         "load4Week": 1000,
         "vo2MaxValue": 52.5,
-        "fitnessAge": 25
+        "fitnessAge": 25,
     }
 
 
@@ -200,6 +198,7 @@ def app_factory(mock_garmin_client):
     Usage:
         app = app_factory(health_wellness)
     """
+
     def _create_app(module):
         return create_test_app(module, mock_garmin_client)
 

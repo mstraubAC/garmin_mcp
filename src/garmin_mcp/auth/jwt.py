@@ -12,6 +12,7 @@ Claims:
     iat      issued-at (unix seconds)
     exp      expiry (unix seconds)
 """
+
 from __future__ import annotations
 
 import base64

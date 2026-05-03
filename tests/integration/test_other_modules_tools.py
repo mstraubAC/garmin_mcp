@@ -11,32 +11,37 @@ Tests tools from:
 - __init__ / main (1 tool - list_activities)
 Total: 25 tools
 """
+
 import pytest
-from unittest.mock import Mock
 from mcp.server.fastmcp import FastMCP
 
 from garmin_mcp.tools import (
-    devices,
-    weight as weight_management,
-    user_profile,
     data as data_management,
-    gear as gear_management,
-    womens_health
 )
-from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
+from garmin_mcp.tools import (
+    devices,
+    user_profile,
+    womens_health,
+)
+from garmin_mcp.tools import (
+    gear as gear_management,
+)
+from garmin_mcp.tools import (
+    weight as weight_management,
+)
+from garmin_mcp.user_context import SingleUserClientCache, set_client_cache
 from tests.fixtures.garmin_responses import (
-    MOCK_DEVICES,
-    MOCK_DEVICE_SETTINGS,
-    MOCK_DEVICE_LAST_USED,
-    MOCK_WEIGH_INS,
     MOCK_DAILY_WEIGH_INS,
-    MOCK_USER_PROFILE,
-    MOCK_UNIT_SYSTEM,
+    MOCK_DEVICE_LAST_USED,
+    MOCK_DEVICE_SETTINGS,
+    MOCK_DEVICES,
     MOCK_GEAR,
     MOCK_GEAR_DEFAULTS,
     MOCK_GEAR_STATS,
     MOCK_MENSTRUAL_DATA,
-    MOCK_ACTIVITIES,
+    MOCK_UNIT_SYSTEM,
+    MOCK_USER_PROFILE,
+    MOCK_WEIGH_INS,
 )
 
 
@@ -73,10 +78,7 @@ async def test_get_device_last_used_tool(app_with_devices, mock_garmin_client):
 async def test_get_device_settings_tool(app_with_devices, mock_garmin_client):
     """Test get_device_settings tool"""
     mock_garmin_client.get_device_settings.return_value = MOCK_DEVICE_SETTINGS
-    result = await app_with_devices.call_tool(
-        "get_device_settings",
-        {"device_id": "abc123456789"}
-    )
+    result = await app_with_devices.call_tool("get_device_settings", {"device_id": "abc123456789"})
     assert result is not None
     mock_garmin_client.get_device_settings.assert_called_once_with("abc123456789")
 
@@ -97,8 +99,7 @@ async def test_get_device_solar_data_tool(app_with_devices, mock_garmin_client):
     solar_data = {"solarIntensity": 75, "batteryLevel": 90}
     mock_garmin_client.get_device_solar_data.return_value = solar_data
     result = await app_with_devices.call_tool(
-        "get_device_solar_data",
-        {"device_id": "abc123456789", "date": "2024-01-15"}
+        "get_device_solar_data", {"device_id": "abc123456789", "date": "2024-01-15"}
     )
     assert result is not None
     mock_garmin_client.get_device_solar_data.assert_called_once_with("abc123456789", "2024-01-15")
@@ -109,10 +110,7 @@ async def test_get_device_alarms_tool(app_with_devices, mock_garmin_client):
     """Test get_device_alarms tool"""
     alarms = [{"alarmId": 1, "time": "07:00", "enabled": True}]
     mock_garmin_client.get_device_alarms.return_value = alarms
-    result = await app_with_devices.call_tool(
-        "get_device_alarms",
-        {}
-    )
+    result = await app_with_devices.call_tool("get_device_alarms", {})
     assert result is not None
     mock_garmin_client.get_device_alarms.assert_called_once()
 
@@ -132,8 +130,7 @@ async def test_get_weigh_ins_tool(app_with_weight, mock_garmin_client):
     """Test get_weigh_ins tool"""
     mock_garmin_client.get_weigh_ins.return_value = MOCK_WEIGH_INS
     result = await app_with_weight.call_tool(
-        "get_weigh_ins",
-        {"start_date": "2024-01-08", "end_date": "2024-01-15"}
+        "get_weigh_ins", {"start_date": "2024-01-08", "end_date": "2024-01-15"}
     )
     assert result is not None
     mock_garmin_client.get_weigh_ins.assert_called_once_with("2024-01-08", "2024-01-15")
@@ -143,10 +140,7 @@ async def test_get_weigh_ins_tool(app_with_weight, mock_garmin_client):
 async def test_get_daily_weigh_ins_tool(app_with_weight, mock_garmin_client):
     """Test get_daily_weigh_ins tool"""
     mock_garmin_client.get_daily_weigh_ins.return_value = MOCK_DAILY_WEIGH_INS
-    result = await app_with_weight.call_tool(
-        "get_daily_weigh_ins",
-        {"date": "2024-01-15"}
-    )
+    result = await app_with_weight.call_tool("get_daily_weigh_ins", {"date": "2024-01-15"})
     assert result is not None
     mock_garmin_client.get_daily_weigh_ins.assert_called_once_with("2024-01-15")
 
@@ -157,8 +151,7 @@ async def test_delete_weigh_ins_tool(app_with_weight, mock_garmin_client):
     # API returns count of deleted entries
     mock_garmin_client.delete_weigh_ins.return_value = 1
     result = await app_with_weight.call_tool(
-        "delete_weigh_ins",
-        {"date": "2024-01-15", "delete_all": True}
+        "delete_weigh_ins", {"date": "2024-01-15", "delete_all": True}
     )
     assert result is not None
     mock_garmin_client.delete_weigh_ins.assert_called_once_with("2024-01-15", delete_all=True)
@@ -169,10 +162,7 @@ async def test_add_weigh_in_tool(app_with_weight, mock_garmin_client):
     """Test add_weigh_in tool"""
     add_response = {"status": "success", "weightPk": 12346}
     mock_garmin_client.add_weigh_in.return_value = add_response
-    result = await app_with_weight.call_tool(
-        "add_weigh_in",
-        {"weight": 70.5, "unit_key": "kg"}
-    )
+    result = await app_with_weight.call_tool("add_weigh_in", {"weight": 70.5, "unit_key": "kg"})
     assert result is not None
     mock_garmin_client.add_weigh_in.assert_called_once_with(weight=70.5, unitKey="kg")
 
@@ -183,8 +173,7 @@ async def test_add_weigh_in_with_timestamps_tool(app_with_weight, mock_garmin_cl
     add_response = {"status": "success", "weightPk": 12347}
     mock_garmin_client.add_weigh_in_with_timestamps.return_value = add_response
     result = await app_with_weight.call_tool(
-        "add_weigh_in_with_timestamps",
-        {"weight": 70.5, "unit_key": "kg"}
+        "add_weigh_in_with_timestamps", {"weight": 70.5, "unit_key": "kg"}
     )
     assert result is not None
     # Note: function has optional date_timestamp and gmt_timestamp parameters
@@ -254,7 +243,7 @@ async def test_add_body_composition_tool(app_with_data_management, mock_garmin_c
     mock_garmin_client.add_body_composition.return_value = add_response
     result = await app_with_data_management.call_tool(
         "add_body_composition",
-        {"date": "2024-01-15", "weight": 70.0, "percent_fat": 15.0}
+        {"date": "2024-01-15", "weight": 70.0, "percent_fat": 15.0},
     )
     assert result is not None
     mock_garmin_client.add_body_composition.assert_called_once_with(
@@ -270,7 +259,7 @@ async def test_add_body_composition_tool(app_with_data_management, mock_garmin_c
         physique_rating=None,
         metabolic_age=None,
         visceral_fat_rating=None,
-        bmi=None
+        bmi=None,
     )
 
 
@@ -280,8 +269,7 @@ async def test_set_blood_pressure_tool(app_with_data_management, mock_garmin_cli
     add_response = {"status": "success", "message": "Blood pressure added"}
     mock_garmin_client.set_blood_pressure.return_value = add_response
     result = await app_with_data_management.call_tool(
-        "set_blood_pressure",
-        {"systolic": 120, "diastolic": 80, "pulse": 65}
+        "set_blood_pressure", {"systolic": 120, "diastolic": 80, "pulse": 65}
     )
     assert result is not None
     mock_garmin_client.set_blood_pressure.assert_called_once_with(120, 80, 65, notes=None)
@@ -294,13 +282,11 @@ async def test_add_hydration_data_tool(app_with_data_management, mock_garmin_cli
     mock_garmin_client.add_hydration_data.return_value = add_response
     result = await app_with_data_management.call_tool(
         "add_hydration_data",
-        {"value_in_ml": 500, "cdate": "2024-01-15", "timestamp": "2024-01-15T10:00:00"}
+        {"value_in_ml": 500, "cdate": "2024-01-15", "timestamp": "2024-01-15T10:00:00"},
     )
     assert result is not None
     mock_garmin_client.add_hydration_data.assert_called_once_with(
-        value_in_ml=500,
-        cdate="2024-01-15",
-        timestamp="2024-01-15T10:00:00"
+        value_in_ml=500, cdate="2024-01-15", timestamp="2024-01-15T10:00:00"
     )
 
 
@@ -353,8 +339,7 @@ async def test_add_gear_to_activity_tool(app_with_gear, mock_garmin_client):
     """Test add_gear_to_activity tool"""
     mock_garmin_client.add_gear_to_activity.return_value = {}
     result = await app_with_gear.call_tool(
-        "add_gear_to_activity",
-        {"activity_id": 12345678901, "gear_uuid": "abc123"}
+        "add_gear_to_activity", {"activity_id": 12345678901, "gear_uuid": "abc123"}
     )
     assert result is not None
     mock_garmin_client.add_gear_to_activity.assert_called_once_with(12345678901, "abc123")
@@ -365,8 +350,7 @@ async def test_remove_gear_from_activity_tool(app_with_gear, mock_garmin_client)
     """Test remove_gear_from_activity tool"""
     mock_garmin_client.remove_gear_from_activity.return_value = {}
     result = await app_with_gear.call_tool(
-        "remove_gear_from_activity",
-        {"activity_id": 12345678901, "gear_uuid": "abc123"}
+        "remove_gear_from_activity", {"activity_id": 12345678901, "gear_uuid": "abc123"}
     )
     assert result is not None
     mock_garmin_client.remove_gear_from_activity.assert_called_once_with(12345678901, "abc123")
@@ -397,8 +381,7 @@ async def test_get_menstrual_data_for_date_tool(app_with_womens_health, mock_gar
     """Test get_menstrual_data_for_date tool"""
     mock_garmin_client.get_menstrual_data_for_date.return_value = MOCK_MENSTRUAL_DATA
     result = await app_with_womens_health.call_tool(
-        "get_menstrual_data_for_date",
-        {"date": "2024-01-15"}
+        "get_menstrual_data_for_date", {"date": "2024-01-15"}
     )
     assert result is not None
     mock_garmin_client.get_menstrual_data_for_date.assert_called_once_with("2024-01-15")
@@ -411,7 +394,9 @@ async def test_get_menstrual_calendar_data_tool(app_with_womens_health, mock_gar
     mock_garmin_client.get_menstrual_calendar_data.return_value = calendar_data
     result = await app_with_womens_health.call_tool(
         "get_menstrual_calendar_data",
-        {"start_date": "2024-01-01", "end_date": "2024-01-31"}
+        {"start_date": "2024-01-01", "end_date": "2024-01-31"},
     )
     assert result is not None
-    mock_garmin_client.get_menstrual_calendar_data.assert_called_once_with("2024-01-01", "2024-01-31")
+    mock_garmin_client.get_menstrual_calendar_data.assert_called_once_with(
+        "2024-01-01", "2024-01-31"
+    )

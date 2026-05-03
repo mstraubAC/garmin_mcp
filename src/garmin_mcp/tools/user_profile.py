@@ -1,17 +1,15 @@
 """
 User Profile functions for Garmin Connect MCP Server
 """
+
 import json
-import datetime
-from typing import Any, Dict, List, Optional, Union
 
 from garmin_mcp.user_context import get_garmin_client
 
 
-
 def register_tools(app):
     """Register all user profile tools with the MCP server app"""
-    
+
     @app.tool()
     async def get_full_name() -> str:
         """Get user's full name from profile"""
@@ -29,7 +27,7 @@ def register_tools(app):
             return json.dumps({"unit_system": unit_system}, indent=2)
         except Exception as e:
             return f"Error retrieving unit system: {str(e)}"
-    
+
     @app.tool()
     async def get_user_profile() -> str:
         """Get user profile information"""

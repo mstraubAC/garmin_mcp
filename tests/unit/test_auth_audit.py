@@ -1,10 +1,10 @@
 """Unit tests for the hash-chained audit log."""
-import json
-import time
 
-import pytest
+import json
 
 from garmin_mcp.auth.audit import AuditLog, _hash_line
+
+# verify_audit CLI ------------------------------------------------------------
 
 
 def _read_lines(log_dir):
@@ -56,7 +56,7 @@ def test_appends_across_calls(tmp_path):
     for i in range(5):
         log.record("e", n=i)
     lines = _read_lines(tmp_path)
-    assert [l["n"] for l in lines] == [0, 1, 2, 3, 4]
+    assert [entry["n"] for entry in lines] == [0, 1, 2, 3, 4]
 
 
 # Hash chain ------------------------------------------------------------------
@@ -108,10 +108,7 @@ def test_restart_continues_chain(tmp_path):
         prev = _hash_line(json.dumps(line_obj, separators=(",", ":"), ensure_ascii=False))
 
 
-# verify_audit CLI ------------------------------------------------------------
-
-
-from garmin_mcp.maintenance.verify_audit import verify as verify_audit
+from garmin_mcp.maintenance.verify_audit import verify as verify_audit  # noqa: E402
 
 
 def test_verify_intact_chain_passes(tmp_path):

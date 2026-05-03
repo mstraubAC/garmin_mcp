@@ -3,18 +3,17 @@ Training and performance functions for Garmin Connect MCP Server
 """
 
 import json
-import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from garmin_mcp.user_context import get_garmin_client
 
 # Cache for activity type mapping. NOTE: this is a global cache shared across
 # all users. Activity type IDs are universal (defined by Garmin, not per-user),
 # so this is safe even in multi-user mode.
-_activity_type_cache: Optional[Dict[int, str]] = None
+_activity_type_cache: dict[int, str] | None = None
 
 
-def _get_activity_type_mapping() -> Dict[int, str]:
+def _get_activity_type_mapping() -> dict[int, str]:
     """Get or build a cached mapping of activity type IDs to names"""
     global _activity_type_cache
     if _activity_type_cache is not None:
@@ -34,14 +33,14 @@ def _get_activity_type_mapping() -> Dict[int, str]:
 
 
 def _map_contributor(
-    contributor: Dict[str, Any], activity_type_mapping: Dict[int, str]
-) -> Dict[str, Any]:
+    contributor: dict[str, Any], activity_type_mapping: dict[int, str]
+) -> dict[str, Any]:
     """Map a contributor dict to include human-readable activity type"""
     activity_type_id = contributor.get("activityTypeId")
     group = contributor.get("group")
     contribution = contributor.get("contribution")
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "contribution_percent": round(contribution, 2) if contribution else None
     }
 
@@ -83,13 +82,15 @@ def register_tools(app):
             )
 
             if not summary_data:
-                return f"No progress summary found for {metric} between {start_date} and {end_date}."
+                return (
+                    f"No progress summary found for {metric} between {start_date} and {end_date}."
+                )
 
             # The API returns a list with one item containing stats by activity type
             if isinstance(summary_data, list) and len(summary_data) > 0:
                 data = summary_data[0]
             else:
-                return f"Unexpected response format from API"
+                return "Unexpected response format from API"
 
             # Curate to essential fields only
             curated = {
@@ -138,9 +139,7 @@ def register_tools(app):
 
             # Parse the period average and max score
             period_avg_score = hill_score_data.get("periodAvgScore", {})
-            avg_score = (
-                next(iter(period_avg_score.values())) if period_avg_score else None
-            )
+            avg_score = next(iter(period_avg_score.values())) if period_avg_score else None
 
             # Get the most recent daily score (first in list)
             daily_scores = hill_score_data.get("hillScoreDTOList", [])
@@ -157,9 +156,7 @@ def register_tools(app):
                 "latest_overall_score": latest_score.get("overallScore"),
                 "latest_strength_score": latest_score.get("strengthScore"),
                 "latest_endurance_score": latest_score.get("enduranceScore"),
-                "latest_classification_id": latest_score.get(
-                    "hillScoreClassificationId"
-                ),
+                "latest_classification_id": latest_score.get("hillScoreClassificationId"),
                 # Daily scores over the period
                 "daily_scores": [
                     {
@@ -210,9 +207,7 @@ def register_tools(app):
             }
             classification_id = score_dto.get("classification")
             classification_label = (
-                classification_labels.get(
-                    classification_id, f"level_{classification_id}"
-                )
+                classification_labels.get(classification_id, f"level_{classification_id}")
                 if classification_id is not None
                 else None
             )
@@ -238,9 +233,7 @@ def register_tools(app):
                         "week_start": week_date,
                         "avg_score": week_data.get("groupAverage"),
                         "max_score": week_data.get("groupMax"),
-                        "contributors": (
-                            week_contributors if week_contributors else None
-                        ),
+                        "contributors": (week_contributors if week_contributors else None),
                     }
                 )
 
@@ -259,13 +252,9 @@ def register_tools(app):
                 # Classification thresholds for context
                 "thresholds": (
                     {
-                        "intermediate": score_dto.get(
-                            "classificationLowerLimitIntermediate"
-                        ),
+                        "intermediate": score_dto.get("classificationLowerLimitIntermediate"),
                         "trained": score_dto.get("classificationLowerLimitTrained"),
-                        "well_trained": score_dto.get(
-                            "classificationLowerLimitWellTrained"
-                        ),
+                        "well_trained": score_dto.get("classificationLowerLimitWellTrained"),
                         "expert": score_dto.get("classificationLowerLimitExpert"),
                         "superior": score_dto.get("classificationLowerLimitSuperior"),
                         "elite": score_dto.get("classificationLowerLimitElite"),
@@ -492,7 +481,7 @@ def register_tools(app):
 
             # Get first device data (usually the primary device)
             device_data = {}
-            for device_id, data in latest_data.items():
+            for _device_id, data in latest_data.items():
                 device_data = data
                 break
 
@@ -505,7 +494,7 @@ def register_tools(app):
             load_balance = status.get("mostRecentTrainingLoadBalance", {})
             load_map = load_balance.get("metricsTrainingLoadBalanceDTOMap", {})
             load_data = {}
-            for device_id, data in load_map.items():
+            for _device_id, data in load_map.items():
                 load_data = data
                 break
 
@@ -514,9 +503,7 @@ def register_tools(app):
                 "date": device_data.get("calendarDate", date),
                 # Training status
                 "training_status": device_data.get("trainingStatus"),
-                "training_status_feedback": device_data.get(
-                    "trainingStatusFeedbackPhrase"
-                ),
+                "training_status_feedback": device_data.get("trainingStatusFeedbackPhrase"),
                 "sport": device_data.get("sport"),
                 "fitness_trend": device_data.get("fitnessTrend"),
                 # Acute Chronic Workload Ratio
@@ -534,9 +521,7 @@ def register_tools(app):
                 "monthly_load_aerobic_low": load_data.get("monthlyLoadAerobicLow"),
                 "monthly_load_aerobic_high": load_data.get("monthlyLoadAerobicHigh"),
                 "monthly_load_anaerobic": load_data.get("monthlyLoadAnaerobic"),
-                "training_balance_feedback": load_data.get(
-                    "trainingBalanceFeedbackPhrase"
-                ),
+                "training_balance_feedback": load_data.get("trainingBalanceFeedbackPhrase"),
             }
 
             # Remove None values
@@ -548,8 +533,8 @@ def register_tools(app):
 
     @app.tool()
     async def get_lactate_threshold(
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
     ) -> str:
         """Get lactate threshold data
 
@@ -632,9 +617,7 @@ def register_tools(app):
                     "heart_rate_cycling_bpm": speed_hr.get("heartRateCycling"),
                     "speed_hr_date": speed_hr.get("calendarDate"),
                     # Power data
-                    "functional_threshold_power_watts": power.get(
-                        "functionalThresholdPower"
-                    ),
+                    "functional_threshold_power_watts": power.get("functionalThresholdPower"),
                     "weight_kg": power.get("weight"),
                     "power_to_weight": power.get("powerToWeight"),
                     "sport": power.get("sport"),

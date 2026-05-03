@@ -18,6 +18,7 @@ Events recorded (one per call site):
     token.issued          /token returned an access token
     token.refused         /token rejected (reason in `detail`)
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -39,9 +40,7 @@ class AuditLog:
     """
 
     def __init__(self, log_dir: str | Path | None = None):
-        log_dir = log_dir or os.environ.get(
-            "GARMIN_MCP_AUDIT_DIR", "/var/log/garmin-mcp"
-        )
+        log_dir = log_dir or os.environ.get("GARMIN_MCP_AUDIT_DIR", "/var/log/garmin-mcp")
         self._log_dir = Path(log_dir)
         self._lock = threading.Lock()
         self._prev_hash: str | None = None

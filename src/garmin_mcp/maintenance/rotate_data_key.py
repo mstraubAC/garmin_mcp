@@ -12,6 +12,7 @@ Usage (offline — stop the service first):
 Keys are read from env vars, never CLI arguments, to prevent leakage
 via `ps aux` or shell history.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,9 +54,7 @@ def rotate(db_path: str, old_key: str, new_key: str) -> int:
     conn.execute("PRAGMA journal_mode=WAL")
 
     try:
-        rows = conn.execute(
-            "SELECT user_id, encrypted_blob FROM garmin_tokens"
-        ).fetchall()
+        rows = conn.execute("SELECT user_id, encrypted_blob FROM garmin_tokens").fetchall()
 
         if not rows:
             print("No garmin_tokens rows found — nothing to rotate.")

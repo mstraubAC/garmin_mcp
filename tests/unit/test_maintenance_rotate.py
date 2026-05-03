@@ -1,4 +1,5 @@
 """Unit tests for the Fernet data-key rotation CLI."""
+
 import sqlite3
 
 import pytest
@@ -75,7 +76,7 @@ def test_rotate_roundtrip(db_path):
     assert result == {"u1": "token-a", "u2": "token-b"}
 
     # Old key cannot decrypt (raises InvalidToken).
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         _decrypt_all(db_path, old_f)
 
 

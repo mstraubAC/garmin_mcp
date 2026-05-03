@@ -4,7 +4,7 @@
 behavior synchronously: success without MFA, success after MFA, MFA timeout,
 wrong password, etc.
 """
-import threading
+
 import time
 
 import pytest
@@ -19,7 +19,6 @@ from garmin_mcp.auth.onboarding import (
     OnboardingState,
 )
 from garmin_mcp.auth.storage import Storage
-
 
 # Test doubles --------------------------------------------------------------
 
@@ -59,6 +58,7 @@ def _factory_with_behavior(behavior: str):
         client = _FakeGarmin(**kwargs)
         client._behavior = behavior
         return client
+
     return make
 
 
@@ -86,9 +86,7 @@ def _wait_for_state(manager, ticket, predicate, timeout=2.0):
         if s and predicate(s.state):
             return s
         time.sleep(0.01)
-    raise AssertionError(
-        f"timed out waiting; last state = {manager.get(ticket).state}"
-    )
+    raise AssertionError(f"timed out waiting; last state = {manager.get(ticket).state}")
 
 
 # Tests ---------------------------------------------------------------------
@@ -111,21 +109,17 @@ def test_concurrent_sessions_capped(token_store):
 
 
 def test_credentials_succeed_without_mfa(token_store):
-    mgr = OnboardingManager(
-        token_store, garmin_factory=_factory_with_behavior("ok_no_mfa")
-    )
+    mgr = OnboardingManager(token_store, garmin_factory=_factory_with_behavior("ok_no_mfa"))
     session = mgr.create_session("u1")
     mgr.submit_credentials(session.ticket, "alice@x.com", "secret")
 
-    s = _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.COMPLETE)
+    s = _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.COMPLETE)  # noqa: F841
     assert token_store.load("u1") == "garth-blob-for-alice@x.com"
     assert s.error_message is None
 
 
 def test_credentials_fail_with_bad_password(token_store):
-    mgr = OnboardingManager(
-        token_store, garmin_factory=_factory_with_behavior("bad_password")
-    )
+    mgr = OnboardingManager(token_store, garmin_factory=_factory_with_behavior("bad_password"))
     session = mgr.create_session("u1")
     mgr.submit_credentials(session.ticket, "alice@x.com", "wrong")
 
@@ -144,16 +138,14 @@ def test_mfa_happy_path_completes(token_store):
     _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.AWAITING_MFA)
 
     mgr.submit_mfa(session.ticket, "123456")
-    s = _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.COMPLETE)
+    s = _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.COMPLETE)  # noqa: F841
     assert token_store.has("u1")
 
 
 def test_mfa_wrong_code_marks_failed(token_store):
     """Submitting a code that garth rejects flows through the worker and
     marks the session FAILED with a clear error."""
-    mgr = OnboardingManager(
-        token_store, garmin_factory=_factory_with_behavior("needs_mfa")
-    )
+    mgr = OnboardingManager(token_store, garmin_factory=_factory_with_behavior("needs_mfa"))
     session = mgr.create_session("u1")
     mgr.submit_credentials(session.ticket, "alice@x.com", "secret")
     _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.AWAITING_MFA)
@@ -215,21 +207,17 @@ def test_on_success_callback_fires_with_user_id(token_store):
         captured["user_id"] = user_id
         return f"https://claude.example.com/cb?code=our-code-for-{user_id}"
 
-    mgr = OnboardingManager(
-        token_store, garmin_factory=_factory_with_behavior("ok_no_mfa")
-    )
+    mgr = OnboardingManager(token_store, garmin_factory=_factory_with_behavior("ok_no_mfa"))
     session = mgr.create_session("u1", on_success=on_success)
     mgr.submit_credentials(session.ticket, "alice@x.com", "secret")
-    s = _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.COMPLETE)
+    s = _wait_for_state(mgr, session.ticket, lambda st: st == OnboardingState.COMPLETE)  # noqa: F841
 
     assert captured["user_id"] == "u1"
     assert s.redirect_url == "https://claude.example.com/cb?code=our-code-for-u1"
 
 
 def test_active_count_excludes_terminal_states(token_store):
-    mgr = OnboardingManager(
-        token_store, garmin_factory=_factory_with_behavior("ok_no_mfa")
-    )
+    mgr = OnboardingManager(token_store, garmin_factory=_factory_with_behavior("ok_no_mfa"))
     s1 = mgr.create_session("u1")
     mgr.create_session("u2")
     assert mgr.active_count() == 2

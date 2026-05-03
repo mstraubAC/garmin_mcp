@@ -1,19 +1,18 @@
 """Unit tests for auth_cli module."""
 
 import os
-import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch, call
+from unittest.mock import Mock, patch
 
 import pytest
 
 from garmin_mcp.auth_cli import (
-    get_mfa,
-    get_credentials,
     authenticate,
-    verify_tokens,
+    get_credentials,
+    get_mfa,
     main,
+    verify_tokens,
 )
 
 
@@ -35,19 +34,32 @@ class TestGetCredentials:
 
     def test_both_email_sources_error(self):
         """Test error when both GARMIN_EMAIL and GARMIN_EMAIL_FILE are set."""
-        with patch.dict(os.environ, {"GARMIN_EMAIL": "test@example.com", "GARMIN_EMAIL_FILE": "/path/to/file"}):
-            with pytest.raises(ValueError, match="Must only provide one"):
-                get_credentials()
+        with (
+            patch.dict(
+                os.environ,
+                {"GARMIN_EMAIL": "test@example.com", "GARMIN_EMAIL_FILE": "/path/to/file"},
+            ),
+            pytest.raises(ValueError, match="Must only provide one"),
+        ):
+            get_credentials()
 
     def test_both_password_sources_error(self):
         """Test error when both GARMIN_PASSWORD and GARMIN_PASSWORD_FILE are set."""
-        with patch.dict(os.environ, {"GARMIN_PASSWORD": "secret", "GARMIN_PASSWORD_FILE": "/path/to/file"}):
-            with pytest.raises(ValueError, match="Must only provide one"):
-                get_credentials()
+        with (
+            patch.dict(
+                os.environ,
+                {"GARMIN_PASSWORD": "secret", "GARMIN_PASSWORD_FILE": "/path/to/file"},
+            ),
+            pytest.raises(ValueError, match="Must only provide one"),
+        ):
+            get_credentials()
 
     def test_from_env_vars(self):
         """Test getting credentials from environment variables."""
-        with patch.dict(os.environ, {"GARMIN_EMAIL": "test@example.com", "GARMIN_PASSWORD": "secret"}):
+        with patch.dict(
+            os.environ,
+            {"GARMIN_EMAIL": "test@example.com", "GARMIN_PASSWORD": "secret"},
+        ):
             email, password = get_credentials()
             assert email == "test@example.com"
             assert password == "secret"
@@ -60,10 +72,13 @@ class TestGetCredentials:
             email_file.write_text("file@example.com")
             password_file.write_text("filesecret")
 
-            with patch.dict(os.environ, {
-                "GARMIN_EMAIL_FILE": str(email_file),
-                "GARMIN_PASSWORD_FILE": str(password_file)
-            }):
+            with patch.dict(
+                os.environ,
+                {
+                    "GARMIN_EMAIL_FILE": str(email_file),
+                    "GARMIN_PASSWORD_FILE": str(password_file),
+                },
+            ):
                 email, password = get_credentials()
                 assert email == "file@example.com"
                 assert password == "filesecret"
@@ -128,7 +143,9 @@ class TestAuthenticate:
     @patch("garmin_mcp.auth_cli.validate_tokens")
     @patch("garmin_mcp.auth_cli.get_credentials")
     @patch("garmin_mcp.auth_cli.Garmin")
-    def test_existing_valid_tokens_with_force(self, mock_garmin, mock_get_creds, mock_validate, mock_exists):
+    def test_existing_valid_tokens_with_force(
+        self, mock_garmin, mock_get_creds, mock_validate, mock_exists
+    ):
         """Test that force flag re-authenticates even with valid tokens."""
         mock_exists.return_value = True
         mock_validate.return_value = (True, "")
@@ -200,7 +217,9 @@ class TestAuthenticate:
 
         mock_exists.return_value = False
         mock_get_creds.return_value = ("test@example.com", "wrongpassword")
-        mock_garmin.return_value.login.side_effect = GarminConnectAuthenticationError("Invalid credentials")
+        mock_garmin.return_value.login.side_effect = GarminConnectAuthenticationError(
+            "Invalid credentials"
+        )
 
         with tempfile.TemporaryDirectory() as tmpdir:
             result = authenticate(tmpdir, f"{tmpdir}/base64", force_reauth=False)
@@ -219,7 +238,7 @@ class TestVerifyTokens:
             "expanded_path": "/test/path",
             "exists": False,
             "valid": False,
-            "error": ""
+            "error": "",
         }
 
         result = verify_tokens("/test/path")
@@ -233,7 +252,7 @@ class TestVerifyTokens:
             "expanded_path": "/test/path",
             "exists": True,
             "valid": True,
-            "error": ""
+            "error": "",
         }
 
         result = verify_tokens("/test/path")
@@ -247,7 +266,7 @@ class TestVerifyTokens:
             "expanded_path": "/test/path",
             "exists": True,
             "valid": False,
-            "error": "Token expired"
+            "error": "Token expired",
         }
 
         result = verify_tokens("/test/path")

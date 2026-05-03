@@ -19,16 +19,17 @@ onboarding (the user starts over). On success the worker calls
 `token_store.save(...)`, then `pending_oauth_callback` (set by the OAuth
 provider) is invoked to issue our auth code and produce the Claude redirect URL.
 """
+
 from __future__ import annotations
 
 import logging
 import secrets
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from queue import Empty, Queue
-from typing import Any, Callable, Optional
 
 from garminconnect import Garmin, GarminConnectAuthenticationError
 
@@ -57,18 +58,18 @@ class OnboardingSession:
     created_at: float
     expires_at: float
     state: OnboardingState = OnboardingState.NEW
-    error_message: Optional[str] = None
+    error_message: str | None = None
     mfa_attempts: int = 0
     # Caller (the OAuth provider) supplies this; called when onboarding
     # succeeds. Returns the URL to redirect the browser to (typically
     # Claude's redirect_uri with our auth code attached).
-    on_success: Optional[Callable[[str], str]] = None
+    on_success: Callable[[str], str] | None = None
     # Populated only on COMPLETE — the URL we redirect the browser to.
-    redirect_url: Optional[str] = None
+    redirect_url: str | None = None
     # Internal: queue the worker waits on for MFA codes
-    _mfa_queue: Optional[Queue] = field(default=None, repr=False)
-    _mfa_event: Optional[threading.Event] = field(default=None, repr=False)
-    _worker: Optional[threading.Thread] = field(default=None, repr=False)
+    _mfa_queue: Queue | None = field(default=None, repr=False)
+    _mfa_event: threading.Event | None = field(default=None, repr=False)
+    _worker: threading.Thread | None = field(default=None, repr=False)
 
 
 class OnboardingError(Exception):
@@ -81,15 +82,13 @@ class OnboardingManager:
     def __init__(
         self,
         token_store: GarminTokenStore,
-        garmin_factory: Optional[Callable[..., Garmin]] = None,
+        garmin_factory: Callable[..., Garmin] | None = None,
         ticket_ttl_seconds: int = DEFAULT_TICKET_TTL_SECONDS,
         mfa_timeout_seconds: int = DEFAULT_MFA_TIMEOUT_SECONDS,
         max_concurrent_sessions: int = 10,
     ):
         self._tokens = token_store
-        self._garmin_factory = garmin_factory or (
-            lambda **kw: Garmin(**kw)
-        )
+        self._garmin_factory = garmin_factory or (lambda **kw: Garmin(**kw))
         self._ticket_ttl = ticket_ttl_seconds
         self._mfa_timeout = mfa_timeout_seconds
         self._max_concurrent = max_concurrent_sessions
@@ -108,8 +107,10 @@ class OnboardingManager:
         """
         with self._lock:
             self._evict_expired_locked()
-            if len([s for s in self._sessions.values() if not _is_terminal(s.state)]) \
-                    >= self._max_concurrent:
+            if (
+                len([s for s in self._sessions.values() if not _is_terminal(s.state)])
+                >= self._max_concurrent
+            ):
                 raise OnboardingError("too many concurrent onboarding sessions")
             ticket = secrets.token_urlsafe(24)
             now = time.monotonic()
@@ -141,10 +142,7 @@ class OnboardingManager:
 
     def _evict_expired_locked(self) -> None:
         now = time.monotonic()
-        expired = [
-            t for t, s in self._sessions.items()
-            if now > s.expires_at + 60
-        ]
+        expired = [t for t, s in self._sessions.items() if now > s.expires_at + 60]
         for t in expired:
             self._sessions.pop(t, None)
 
@@ -254,9 +252,7 @@ class OnboardingManager:
         if session is None:
             raise OnboardingError("unknown ticket")
         if session.state != OnboardingState.AWAITING_MFA:
-            raise OnboardingError(
-                f"session is not awaiting MFA (state={session.state.value})"
-            )
+            raise OnboardingError(f"session is not awaiting MFA (state={session.state.value})")
         if not code or not code.strip():
             raise OnboardingError("MFA code must not be empty")
 
@@ -277,9 +273,7 @@ class OnboardingManager:
 
     def active_count(self) -> int:
         with self._lock:
-            return sum(
-                1 for s in self._sessions.values() if not _is_terminal(s.state)
-            )
+            return sum(1 for s in self._sessions.values() if not _is_terminal(s.state))
 
 
 def _is_terminal(state: OnboardingState) -> bool:

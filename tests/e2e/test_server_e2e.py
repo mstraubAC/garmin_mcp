@@ -13,10 +13,10 @@ Run with: pytest tests/e2e/ -m e2e
 Or skip with: pytest -m "not e2e"
 """
 
-import pytest
 import asyncio
 from datetime import datetime
-from pathlib import Path
+
+import pytest
 from dotenv import load_dotenv
 
 # Import MCP client for testing
@@ -90,17 +90,14 @@ async def test_list_activities_tool():
                     await session.initialize()
 
                     # Test list_activities
-                    result = await session.call_tool(
-                        "list_activities",
-                        arguments={"limit": 2}
-                    )
+                    result = await session.call_tool("list_activities", arguments={"limit": 2})
 
                     # Verify result
                     assert result is not None
                     assert len(result.content) > 0
 
                     # Print result for debugging
-                    print(f"\nlist_activities result preview:")
+                    print("\nlist_activities result preview:")
                     print(result.content[0].text[:500] + "...")
     except asyncio.TimeoutError:
         pytest.fail("Tool execution timed out - check your Garmin credentials and network")
@@ -126,17 +123,14 @@ async def test_get_steps_data_tool():
                     # Test get_steps_data with today's date
                     today = datetime.now().strftime("%Y-%m-%d")
 
-                    result = await session.call_tool(
-                        "get_steps_data",
-                        arguments={"date": today}
-                    )
+                    result = await session.call_tool("get_steps_data", arguments={"date": today})
 
                     # Verify result
                     assert result is not None
                     assert len(result.content) > 0
 
                     # Print result for debugging
-                    print(f"\nget_steps_data result preview:")
+                    print("\nget_steps_data result preview:")
                     print(result.content[0].text[:500] + "...")
     except asyncio.TimeoutError:
         pytest.fail("Tool execution timed out - check your Garmin credentials and network")
