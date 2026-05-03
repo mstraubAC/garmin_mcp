@@ -25,6 +25,7 @@ garmin-mcp-auth = "garmin_mcp.auth_cli:main"
 
 [tool.uv]
 dev-dependencies = [
+    "asgi-lifespan>=2.1.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=0.25.2",
     "pytest-mock>=3.14.0",
