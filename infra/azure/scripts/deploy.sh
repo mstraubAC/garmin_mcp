@@ -21,16 +21,16 @@ if [[ ! -f "${PARAM_FILE}" ]]; then
 fi
 
 LOCATION=$(grep -E "^param location" "${PARAM_FILE}" | sed -E "s/.*=\s*'([^']+)'.*/\1/")
-echo "Deploying ${ENV_NAME} (location=${LOCATION})..." >&2
+echo "Deploying ${ENV_NAME} at tenant scope (location=${LOCATION} for deployment metadata only)..." >&2
 
-az deployment sub create \
+az deployment tenant create \
     --name "${DEPLOYMENT_NAME}" \
     --location "${LOCATION}" \
     --template-file main.bicep \
     --parameters "${PARAM_FILE}" \
     --output none
 
-OUTPUTS=$(az deployment sub show --name "${DEPLOYMENT_NAME}" --query properties.outputs -o json)
+OUTPUTS=$(az deployment tenant show --name "${DEPLOYMENT_NAME}" --query properties.outputs -o json)
 APP_ID=$(echo "${OUTPUTS}" | jq -r '.appId.value')
 TENANT_ID=$(echo "${OUTPUTS}" | jq -r '.tenantId.value')
 

@@ -5,10 +5,13 @@ Garmin MCP OAuth proxy uses to authenticate users from your Microsoft 365
 tenant. The app is single-tenant; sign-in is restricted to your tenant
 (optionally further restricted to specific users).
 
+The deployment is **tenant-scoped** — no Azure subscription, resource group,
+or Azure resource of any kind is created. Everything lives in Microsoft Entra
+ID. The `--location` you pass to `az deployment tenant create` only tags the
+deployment metadata record; nothing is provisioned in that region.
+
 ## What gets created
 
-- **Resource group** (e.g. `rg-garmin-mcp`) — only used as a Bicep deployment
-  scope; the Entra resources are tenant-scoped and not billed against the RG.
 - **App registration** (`Microsoft.Graph/applications`) with:
   - `signInAudience: AzureADMyOrg` (single-tenant)
   - Web redirect URI: `${publicUrl}/callback`
@@ -20,7 +23,8 @@ tenant. The app is single-tenant; sign-in is restricted to your tenant
 
 ## Prerequisites
 
-- Azure subscription in your O365 tenant
+- An O365 tenant where you can create app registrations (no Azure
+  subscription needed)
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
   with [Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install)
   v0.36.1 or newer (`az bicep upgrade`)
@@ -103,7 +107,7 @@ file — the old secret is still valid until you prune.
 az ad app show --id <appId> --query "{name:displayName, audience:signInAudience, redirects:web.redirectUris}"
 
 # Diff next deployment vs. live state — should show no changes on a re-run
-az deployment sub what-if \
+az deployment tenant what-if \
   --location westeurope \
   --template-file main.bicep \
   --parameters parameters/prod.bicepparam

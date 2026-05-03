@@ -1,7 +1,7 @@
 // Production parameters. Adjust `publicUrl` to your hostname before deploying.
 //
 // Run:
-//   az deployment sub create \
+//   az deployment tenant create \
 //     --location westeurope \
 //     --template-file ../main.bicep \
 //     --parameters prod.bicepparam
@@ -9,7 +9,6 @@
 using '../main.bicep'
 
 param location = 'westeurope'
-param resourceGroupName = 'rg-garmin-mcp'
 param publicUrl = 'https://garmin-mcp.example.com'
 param displayName = 'Garmin MCP Server'
 param uniqueName = 'garmin-mcp-server'

@@ -5,7 +5,6 @@
 using '../main.bicep'
 
 param location = 'westeurope'
-param resourceGroupName = 'rg-garmin-mcp-dev'
 param publicUrl = 'http://localhost:8000'
 param displayName = 'Garmin MCP Server (dev)'
 param uniqueName = 'garmin-mcp-server-dev'
