@@ -86,6 +86,9 @@ def live_server(mock_garmin_client):
     finally:
         server.should_exit = True
         thread.join(timeout=5)
+        # See note in test_oauth_flow.py — give the uvicorn thread's loop
+        # time to settle so its asyncio primitives don't leak across tests.
+        threading.Event().wait(0.3)
 
 
 @pytest.mark.timeout(15)
