@@ -184,6 +184,27 @@ Operational walkthroughs:
 
 ## Contributing
 
+### First-time setup
+
+```bash
+./setup.sh
+```
+
+This installs `uv` (if not present), creates the Python environment,
+installs all dependencies, and configures pre-commit hooks (ruff,
+mypy, whitespace, YAML/JSON validation). After setup you can:
+
+```bash
+uv run pytest                              # run tests
+uv run ruff check src/ tests/              # lint
+uv run ruff format --check src/ tests/     # format check
+uv run mypy src/garmin_mcp                 # type check
+uv run coverage run -m pytest && uv run coverage report   # coverage
+```
+
+Pre-commit hooks run automatically on `git commit`. Run them manually
+with `uv run pre-commit run --all-files`.
+
 ### Definition of Done
 
 A change is **not done** until both the code and the docs are updated to
