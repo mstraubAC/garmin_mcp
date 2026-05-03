@@ -1,0 +1,25 @@
+name: Infra validation
+
+on:
+  pull_request:
+    paths:
+      - 'infra/azure/**'
+  push:
+    branches: [main]
+    paths:
+      - 'infra/azure/**'
+
+jobs:
+  bicep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Bicep
+        run: |
+          az bicep upgrade
+          az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+      - name: Validate parameters
+        run: |
+          for f in infra/azure/parameters/*.bicepparam; do
+            az bicep build-params --file "$f" --stdout > /dev/null
+          done
