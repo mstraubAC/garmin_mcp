@@ -125,3 +125,58 @@ class RegistrationGuard:
 
     async def check_per_ip(self, ip: str) -> bool:
         return await self._per_ip.try_consume(f"register:{ip}")
+
+
+class ToolCallGuard:
+    """Per-user + global rate limiting on Garmin API tool calls.
+
+    Two-layer token bucket:
+      1. **Per-user** bucket — prevents one user from monopolizing the
+         Garmin API quota (capacity=60, refill=60/60s ≈ 1 call/sec/user).
+      2. **Global outbound** bucket — caps total calls to Garmin
+         regardless of user count (capacity=120, refill=120/60s ≈ 2
+         calls/sec total).
+
+    Both layers must allow the call for it to proceed.  This keeps a
+    single noisy user from tripping Garmin's IP-level limiter and
+    affecting every other user on the same VPS.
+
+    Usage (wired inside MultiUserClientCache):
+        guard = ToolCallGuard(storage)
+        if not await guard.try_consume(user_id):
+            raise RateLimitExceededError(user_id)
+    """
+
+    def __init__(self, storage: Storage):
+        self._per_user = TokenBucket(
+            storage, capacity=60, refill_per_second=60 / 60
+        )
+        self._global = TokenBucket(
+            storage, capacity=120, refill_per_second=120 / 60
+        )
+
+    async def try_consume(self, user_id: str) -> bool:
+        """Returns True if both per-user and global buckets allow the call."""
+        if not await self._per_user.try_consume(f"tool:{user_id}"):
+            return False
+        if not await self._global.try_consume("tool:global"):
+            return False
+        return True
+
+    def try_consume_sync(self, user_id: str) -> bool:
+        """Sync variant for test and non-async call sites."""
+        if not self._per_user.try_consume_sync(f"tool:{user_id}"):
+            return False
+        if not self._global.try_consume_sync("tool:global"):
+            return False
+        return True
+
+
+class RateLimitExceededError(Exception):
+    """Raised when a tool call is blocked by the ToolCallGuard."""
+
+    def __init__(self, user_id: str):
+        super().__init__(
+            f"Rate limit exceeded for user {user_id} — slow down and retry"
+        )
+        self.user_id = user_id
