@@ -510,6 +510,27 @@ async def test_delete_workout_exception(app_with_workouts, mock_garmin_client):
     assert "Error deleting workout" in result[0][0].text
 
 
+# Security: UUID input validation tests
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_uuid", [
+    "d7a5491b-42a5-4d2d-ba38-4e414fc03caf/../../admin",  # path traversal
+    "d7a5491b-42a5-4d2d-ba38-4e414fc03caf extra",        # extra content
+    "not-a-valid-uuid",                                   # too short, garbage
+    "-only-dashes-here-",                                 # dashes but wrong format
+    "gggggggg-gggg-gggg-gggg-gggggggggggg",             # non-hex chars
+])
+async def test_get_workout_by_id_rejects_invalid_uuid(
+    app_with_workouts, mock_garmin_client, bad_uuid
+):
+    """Malformed UUID inputs must be rejected before hitting the API"""
+    result = await app_with_workouts.call_tool(
+        "get_workout_by_id", {"workout_id": bad_uuid}
+    )
+    mock_garmin_client.garth.get.assert_not_called()
+    assert "Invalid workout UUID format" in result[0][0].text
+
+
 # Error handling tests
 @pytest.mark.asyncio
 async def test_get_workouts_no_data(app_with_workouts, mock_garmin_client):
