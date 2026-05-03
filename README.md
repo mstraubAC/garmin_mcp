@@ -1,5 +1,9 @@
 # Garmin MCP server — multi-user fork
 
+[![CI](https://github.com/mstraubAC/garmin_mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mstraubAC/garmin_mcp/actions/workflows/ci.yml)
+[![Security](https://github.com/mstraubAC/garmin_mcp/actions/workflows/security.yml/badge.svg)](https://github.com/mstraubAC/garmin_mcp/actions/workflows/security.yml)
+[![Infra](https://github.com/mstraubAC/garmin_mcp/actions/workflows/infra.yml/badge.svg)](https://github.com/mstraubAC/garmin_mcp/actions/workflows/infra.yml)
+
 A Model Context Protocol (MCP) server that exposes Garmin Connect data
 (activities, sleep, training, nutrition, workouts, devices, …) as tools
 that any MCP client — Claude Desktop, Claude apps, MCP Inspector — can
@@ -24,7 +28,7 @@ running quickly.
 | Docker Compose stack with Caddy + auto-TLS | — | ✅ |
 | Azure infrastructure as Bicep (`infra/azure/`) | — | ✅ |
 | arc42 architecture docs (`doc/`) | — | ✅ |
-| 320 automated tests | partial | ✅ |
+| 345 automated tests | partial | ✅ |
 
 The MCP tool surface (96+ tools across activities, health, training,
 workouts, nutrition, …) is inherited unchanged from upstream.
