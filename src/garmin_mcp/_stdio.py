@@ -55,44 +55,58 @@ def get_mfa() -> str:
     return input("Enter MFA code: ")
 
 
-# Get credentials from environment
-email = os.environ.get("GARMIN_EMAIL")
-email_file = os.environ.get("GARMIN_EMAIL_FILE")
-if email and email_file:
-    raise ValueError("Must only provide one of GARMIN_EMAIL and GARMIN_EMAIL_FILE, got both")
-elif email_file:
-    with open(email_file) as email_file:
-        email = email_file.read().rstrip()
+def _load_credentials() -> tuple[str | None, str | None, str, str, bool]:
+    """Load Garmin credentials from environment variables.
 
-password = os.environ.get("GARMIN_PASSWORD")
-password_file = os.environ.get("GARMIN_PASSWORD_FILE")
-if password and password_file:
-    raise ValueError("Must only provide one of GARMIN_PASSWORD and GARMIN_PASSWORD_FILE, got both")
-elif password_file:
-    with open(password_file) as password_file:
-        password = password_file.read().rstrip()
+    Returns (email, password, tokenstore, _tokenstore_base64, is_cn).
+    Extracted from module level for testability.
+    """
+    email = os.environ.get("GARMIN_EMAIL")
+    email_file = os.environ.get("GARMIN_EMAIL_FILE")
+    if email and email_file:
+        raise ValueError(
+            "Must only provide one of GARMIN_EMAIL and GARMIN_EMAIL_FILE, got both"
+        )
+    elif email_file and email_file.strip():
+        with open(email_file) as ef:
+            email = ef.read().rstrip()
 
-tokenstore = os.getenv("GARMINTOKENS") or "~/.garminconnect"
-tokenstore_base64 = os.getenv("GARMINTOKENS_BASE64") or "~/.garminconnect_base64"
-is_cn = os.getenv("GARMIN_IS_CN", "false").lower() in ("true", "1", "yes")
+    password = os.environ.get("GARMIN_PASSWORD")
+    password_file = os.environ.get("GARMIN_PASSWORD_FILE")
+    if password and password_file:
+        raise ValueError(
+            "Must only provide one of GARMIN_PASSWORD and GARMIN_PASSWORD_FILE, got both"
+        )
+    elif password_file and password_file.strip():
+        with open(password_file) as pf:
+            password = pf.read().rstrip()
+
+    tokenstore = os.getenv("GARMINTOKENS") or "~/.garminconnect"
+    _tokenstore_base64 = os.getenv("GARMINTOKENS_BASE64") or "~/.garminconnect_base64"
+    is_cn = os.getenv("GARMIN_IS_CN", "false").lower() in ("true", "1", "yes")
+    return email, password, tokenstore, _tokenstore_base64, is_cn
 
 
-def init_api(email, password):
+# Module-level credential loading (for backward compatibility with direct imports).
+_email, _password, _tokenstore, __tokenstore_base64, _is_cn = _load_credentials()
+
+
+def init_api(_email, _password):
     """Initialize Garmin API with your credentials."""
     import io
 
     try:
         # Using Oauth1 and OAuth2 token files from directory
         print(
-            f"Trying to login to Garmin Connect using token data from directory '{tokenstore}'...\n",
+            f"Trying to login to Garmin Connect using token data from directory '{_tokenstore}'...\n",
             file=sys.stderr,
         )
 
         # Using Oauth1 and Oauth2 tokens from base64 encoded string
         # print(
-        #     f"Trying to login to Garmin Connect using token data from file '{tokenstore_base64}'...\n"
+        #     f"Trying to login to Garmin Connect using token data from file '{_tokenstore_base64}'...\n"
         # )
-        # dir_path = os.path.expanduser(tokenstore_base64)
+        # dir_path = os.path.expanduser(_tokenstore_base64)
         # with open(dir_path, "r") as token_file:
         #     tokenstore = token_file.read()
 
@@ -101,8 +115,8 @@ def init_api(email, password):
         sys.stderr = io.StringIO()
 
         try:
-            garmin = Garmin(is_cn=is_cn)
-            garmin.login(tokenstore)
+            garmin = Garmin(is_cn=_is_cn)
+            garmin.login(_tokenstore)
         finally:
             sys.stderr = old_stderr
 
@@ -117,28 +131,28 @@ def init_api(email, password):
                 "  1. Run: garmin-mcp-auth\n"
                 "  2. Enter your credentials and MFA code\n"
                 "  3. Restart your MCP client\n"
-                f"Tokens will be saved to: {tokenstore}\n",
+                f"Tokens will be saved to: {_tokenstore}\n",
                 file=sys.stderr,
             )
             return None
 
         print(
             "Login tokens not present, login with your Garmin Connect credentials to generate them.\n"
-            f"They will be stored in '{tokenstore}' for future use.\n",
+            f"They will be stored in '{_tokenstore}' for future use.\n",
             file=sys.stderr,
         )
         try:
-            garmin = Garmin(email=email, password=password, is_cn=is_cn, prompt_mfa=get_mfa)
+            garmin = Garmin(email=email, password=password, is_cn=_is_cn, prompt_mfa=get_mfa)
             garmin.login()
             # Save Oauth1 and Oauth2 token files to directory for next login
-            garmin.garth.dump(tokenstore)
+            garmin.garth.dump(_tokenstore)
             print(
-                f"Oauth tokens stored in '{tokenstore}' directory for future use. (first method)\n",
+                f"Oauth tokens stored in '{_tokenstore}' directory for future use. (first method)\n",
                 file=sys.stderr,
             )
             # Encode Oauth1 and Oauth2 tokens to base64 string and safe to file for next login (alternative way)
             token_base64 = garmin.garth.dumps()
-            dir_path = os.path.expanduser(tokenstore_base64)
+            dir_path = os.path.expanduser(_tokenstore_base64)
             with open(dir_path, "w") as token_file:
                 token_file.write(token_base64)
             print(
@@ -194,7 +208,7 @@ def main():
     """Initialize the MCP server and register all tools"""
 
     # Initialize Garmin client
-    garmin_client = init_api(email, password)
+    garmin_client = init_api(_email, _password)
     if not garmin_client:
         print("Failed to initialize Garmin Connect client. Exiting.", file=sys.stderr)
         return
