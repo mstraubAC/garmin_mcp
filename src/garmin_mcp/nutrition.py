@@ -2,9 +2,19 @@
 Nutrition/food logging functions for Garmin Connect MCP Server
 """
 import json
+import re
 from typing import Optional
+from urllib.parse import quote
 
 from garth.exc import GarthHTTPError
+
+_DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
+
+def _validate_date(date: str) -> None:
+    if not _DATE_RE.match(date):
+        raise ValueError(f"Invalid date format '{date}': expected YYYY-MM-DD")
+
 
 # The garmin_client will be set by the main file
 garmin_client = None
@@ -38,6 +48,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
+            _validate_date(date)
             url = f"/nutrition-service/food/logs/{date}"
             data = garmin_client.connectapi(url)
             if not data:
@@ -58,6 +69,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
+            _validate_date(date)
             url = f"/nutrition-service/meals/{date}"
             data = garmin_client.connectapi(url)
             if not data:
@@ -77,6 +89,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
+            _validate_date(date)
             url = f"/nutrition-service/settings/{date}"
             data = garmin_client.connectapi(url)
             if not data:
@@ -104,7 +117,7 @@ def register_tools(app):
         try:
             url = (
                 f"/nutrition-service/customFood"
-                f"?searchExpression={search}"
+                f"?searchExpression={quote(search, safe='')}"
                 f"&start={start}&limit={limit}"
                 f"&includeContent=true"
             )

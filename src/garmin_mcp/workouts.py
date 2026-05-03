@@ -2,8 +2,11 @@
 Workout-related functions for Garmin Connect MCP Server
 """
 import json
+import re
 import datetime
 from typing import Any, Dict, List, Optional, Union
+
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
 
 # The garmin_client will be set by the main file
 garmin_client = None
@@ -278,6 +281,8 @@ def register_tools(app):
             is_uuid = '-' in workout_id_str
 
             if is_uuid:
+                if not _UUID_RE.match(workout_id_str):
+                    return f"Invalid workout UUID format: {workout_id_str!r}"
                 # Training plan / Garmin Coach workout - use fbt-adaptive endpoint
                 url = f"workout-service/fbt-adaptive/{workout_id_str}"
                 response = garmin_client.garth.get("connectapi", url)

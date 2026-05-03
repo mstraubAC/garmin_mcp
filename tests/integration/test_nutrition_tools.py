@@ -191,6 +191,80 @@ async def test_get_custom_foods_with_search(app_with_nutrition, mock_garmin_clie
     )
 
 
+# Security: input validation tests
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_date", [
+    "2024-01-01/../../etc/passwd",  # path traversal
+    "../admin",                      # relative path
+    "2024-01-01 extra",             # extra content
+    "01-15-2024",                   # wrong order
+    "2024/01/15",                   # wrong separator
+    "",                             # empty
+    "not-a-date",                   # garbage
+])
+async def test_get_nutrition_daily_food_log_rejects_invalid_date(
+    app_with_nutrition, mock_garmin_client, bad_date
+):
+    """Invalid date inputs must be rejected before hitting the API"""
+    result = await app_with_nutrition.call_tool(
+        "get_nutrition_daily_food_log", {"date": bad_date}
+    )
+    mock_garmin_client.connectapi.assert_not_called()
+    assert "Invalid date format" in result[0][0].text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_date", [
+    "2024-01-01/../../etc/passwd",
+    "../admin",
+    "not-a-date",
+])
+async def test_get_nutrition_daily_meals_rejects_invalid_date(
+    app_with_nutrition, mock_garmin_client, bad_date
+):
+    """Invalid date inputs must be rejected before hitting the API"""
+    result = await app_with_nutrition.call_tool(
+        "get_nutrition_daily_meals", {"date": bad_date}
+    )
+    mock_garmin_client.connectapi.assert_not_called()
+    assert "Invalid date format" in result[0][0].text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad_date", [
+    "2024-01-01/../../etc/passwd",
+    "../admin",
+    "not-a-date",
+])
+async def test_get_nutrition_daily_settings_rejects_invalid_date(
+    app_with_nutrition, mock_garmin_client, bad_date
+):
+    """Invalid date inputs must be rejected before hitting the API"""
+    result = await app_with_nutrition.call_tool(
+        "get_nutrition_daily_settings", {"date": bad_date}
+    )
+    mock_garmin_client.connectapi.assert_not_called()
+    assert "Invalid date format" in result[0][0].text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("search,expected_encoded", [
+    ("test&injected=true", "test%26injected%3Dtrue"),  # parameter injection
+    ("food?hack=1", "food%3Fhack%3D1"),                # query string injection
+    ("apple pie", "apple%20pie"),                       # space
+    ("café", "caf%C3%A9"),                             # non-ASCII
+])
+async def test_get_custom_foods_search_is_url_encoded(
+    app_with_nutrition, mock_garmin_client, search, expected_encoded
+):
+    """Special characters in the search parameter must be URL-encoded"""
+    mock_garmin_client.connectapi.return_value = []
+    await app_with_nutrition.call_tool("get_custom_foods", {"search": search})
+    called_url = mock_garmin_client.connectapi.call_args[0][0]
+    assert f"searchExpression={expected_encoded}" in called_url
+
+
 @pytest.mark.asyncio
 async def test_get_custom_foods_empty(app_with_nutrition, mock_garmin_client):
     """Test get_custom_foods tool with no results"""
