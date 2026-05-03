@@ -8,6 +8,8 @@ from urllib.parse import quote
 
 from garth.exc import GarthHTTPError
 
+from garmin_mcp.user_context import get_garmin_client
+
 _DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 
 
@@ -16,22 +18,12 @@ def _validate_date(date: str) -> None:
         raise ValueError(f"Invalid date format '{date}': expected YYYY-MM-DD")
 
 
-# The garmin_client will be set by the main file
-garmin_client = None
-
-
 def _num_to_str(value: float) -> str:
     """Format a number as string, dropping .0 for whole numbers.
 
     Garmin's API expects integer strings like "160" not "160.0".
     """
     return str(int(value)) if value == int(value) else str(value)
-
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -50,7 +42,7 @@ def register_tools(app):
         try:
             _validate_date(date)
             url = f"/nutrition-service/food/logs/{date}"
-            data = garmin_client.connectapi(url)
+            data = get_garmin_client().connectapi(url)
             if not data:
                 return f"No food log data found for {date}."
             return json.dumps(data, indent=2)
@@ -71,7 +63,7 @@ def register_tools(app):
         try:
             _validate_date(date)
             url = f"/nutrition-service/meals/{date}"
-            data = garmin_client.connectapi(url)
+            data = get_garmin_client().connectapi(url)
             if not data:
                 return f"No meal data found for {date}."
             return json.dumps(data, indent=2)
@@ -91,7 +83,7 @@ def register_tools(app):
         try:
             _validate_date(date)
             url = f"/nutrition-service/settings/{date}"
-            data = garmin_client.connectapi(url)
+            data = get_garmin_client().connectapi(url)
             if not data:
                 return f"No nutrition settings found for {date}."
             return json.dumps(data, indent=2)
@@ -121,7 +113,7 @@ def register_tools(app):
                 f"&start={start}&limit={limit}"
                 f"&includeContent=true"
             )
-            data = garmin_client.connectapi(url)
+            data = get_garmin_client().connectapi(url)
             if not data:
                 return "No custom foods found."
             return json.dumps(data, indent=2)
@@ -137,7 +129,7 @@ def register_tools(app):
         """
         try:
             url = "/nutrition-service/metadata/customFoodServingUnits"
-            data = garmin_client.connectapi(url)
+            data = get_garmin_client().connectapi(url)
             if not data:
                 return "No serving units found."
             return json.dumps(data, indent=2)
@@ -213,7 +205,7 @@ def register_tools(app):
                 "nutritionContents": [nutrition],
             }
             url = "/nutrition-service/customFood"
-            resp = garmin_client.garth.put(
+            resp = get_garmin_client().garth.put(
                 "connectapi", url, json=payload, api=True
             )
             if resp.status_code == 204:
@@ -301,7 +293,7 @@ def register_tools(app):
                 "nutritionContents": [nutrition],
             }
             url = "/nutrition-service/customFood"
-            resp = garmin_client.garth.put(
+            resp = get_garmin_client().garth.put(
                 "connectapi", url, json=payload, api=True
             )
             if resp.status_code == 204:
@@ -364,7 +356,7 @@ def register_tools(app):
                 ],
             }
             url = "/nutrition-service/food/logs"
-            resp = garmin_client.garth.put(
+            resp = get_garmin_client().garth.put(
                 "connectapi", url, json=payload, api=True
             )
             if resp.status_code == 204:

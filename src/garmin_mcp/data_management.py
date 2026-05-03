@@ -5,14 +5,8 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -52,7 +46,7 @@ def register_tools(app):
             bmi: Body Mass Index
         """
         try:
-            result = garmin_client.add_body_composition(
+            result = get_garmin_client().add_body_composition(
                 date,
                 weight=weight,
                 percent_fat=percent_fat,
@@ -87,7 +81,7 @@ def register_tools(app):
             notes: Optional notes
         """
         try:
-            result = garmin_client.set_blood_pressure(
+            result = get_garmin_client().set_blood_pressure(
                 systolic, diastolic, pulse, notes=notes
             )
             return json.dumps(result, indent=2)
@@ -108,7 +102,7 @@ def register_tools(app):
             timestamp: Timestamp in YYYY-MM-DDThh:mm:ss.sss format
         """
         try:
-            result = garmin_client.add_hydration_data(
+            result = get_garmin_client().add_hydration_data(
                 value_in_ml=value_in_ml,
                 cdate=cdate,
                 timestamp=timestamp

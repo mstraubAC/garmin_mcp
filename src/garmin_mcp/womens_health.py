@@ -5,14 +5,8 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -22,7 +16,7 @@ def register_tools(app):
     async def get_pregnancy_summary() -> str:
         """Get pregnancy summary data"""
         try:
-            summary = garmin_client.get_pregnancy_summary()
+            summary = get_garmin_client().get_pregnancy_summary()
             if not summary:
                 return "No pregnancy summary data found."
             return json.dumps(summary, indent=2)
@@ -37,7 +31,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_menstrual_data_for_date(date)
+            data = get_garmin_client().get_menstrual_data_for_date(date)
             if not data:
                 return f"No menstrual data found for {date}."
             return json.dumps(data, indent=2)
@@ -53,7 +47,7 @@ def register_tools(app):
             end_date: End date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_menstrual_calendar_data(start_date, end_date)
+            data = get_garmin_client().get_menstrual_calendar_data(start_date, end_date)
             if not data:
                 return f"No menstrual calendar data found between {start_date} and {end_date}."
             return json.dumps(data, indent=2)

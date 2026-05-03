@@ -25,6 +25,7 @@ from garmin_mcp import workout_templates
 from garmin_mcp import data_management
 from garmin_mcp import womens_health
 from garmin_mcp import nutrition
+from garmin_mcp.user_context import set_client_cache, SingleUserClientCache
 
 
 def is_interactive_terminal() -> bool:
@@ -212,19 +213,9 @@ def main():
 
     print("Garmin Connect client initialized successfully.", file=sys.stderr)
 
-    # Configure all modules with the Garmin client
-    activity_management.configure(garmin_client)
-    health_wellness.configure(garmin_client)
-    user_profile.configure(garmin_client)
-    devices.configure(garmin_client)
-    gear_management.configure(garmin_client)
-    weight_management.configure(garmin_client)
-    challenges.configure(garmin_client)
-    training.configure(garmin_client)
-    workouts.configure(garmin_client)
-    data_management.configure(garmin_client)
-    womens_health.configure(garmin_client)
-    nutrition.configure(garmin_client)
+    # Wire the per-user resolver. In stdio mode there's only one user, so the
+    # cache returns the same client for every lookup.
+    set_client_cache(SingleUserClientCache(garmin_client))
 
     # Create the MCP app
     app = FastMCP("Garmin Connect v1.0")

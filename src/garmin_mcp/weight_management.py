@@ -5,14 +5,8 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -27,7 +21,7 @@ def register_tools(app):
             end_date: End date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_weigh_ins(start_date, end_date)
+            data = get_garmin_client().get_weigh_ins(start_date, end_date)
             if not data:
                 return f"No weight measurements found between {start_date} and {end_date}."
 
@@ -90,7 +84,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            data = garmin_client.get_daily_weigh_ins(date)
+            data = get_garmin_client().get_daily_weigh_ins(date)
             if not data:
                 return f"No weight measurements found for {date}."
 
@@ -142,7 +136,7 @@ def register_tools(app):
         """
         try:
             # API returns count of deleted entries
-            deleted_count = garmin_client.delete_weigh_ins(date, delete_all=delete_all)
+            deleted_count = get_garmin_client().delete_weigh_ins(date, delete_all=delete_all)
             return json.dumps({
                 "status": "success",
                 "date": date,
@@ -161,7 +155,7 @@ def register_tools(app):
             unit_key: Unit of weight ('kg' or 'lb')
         """
         try:
-            result = garmin_client.add_weigh_in(weight=weight, unitKey=unit_key)
+            result = get_garmin_client().add_weigh_in(weight=weight, unitKey=unit_key)
             # Return structured response
             return json.dumps({
                 "status": "success",
@@ -194,7 +188,7 @@ def register_tools(app):
                 date_timestamp = now.strftime('%Y-%m-%dT%H:%M:%S')
                 gmt_timestamp = now.astimezone(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')
 
-            result = garmin_client.add_weigh_in_with_timestamps(
+            result = get_garmin_client().add_weigh_in_with_timestamps(
                 weight=weight,
                 unitKey=unit_key,
                 dateTimestamp=date_timestamp,

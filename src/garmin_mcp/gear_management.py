@@ -5,8 +5,7 @@ Gear management functions for Garmin Connect MCP Server
 import json
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
 # Activity type mappings for gear defaults
 # This is extrapolated from data and might not be complete or 100% accurate
@@ -29,12 +28,6 @@ def _parse_iso_date(iso_string: str) -> str:
     return iso_string.split("T")[0] if "T" in iso_string else iso_string
 
 
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
-
-
 def register_tools(app):
     """Register all gear management tools with the MCP server app"""
 
@@ -51,18 +44,18 @@ def register_tools(app):
         """
         try:
             # 1. Get user_profile_id automatically from last used device
-            device_info = garmin_client.get_device_last_used()
+            device_info = get_garmin_client().get_device_last_used()
             if not device_info:
                 return "Could not retrieve user profile. Please ensure you have a synced device."
             user_profile_id = device_info.get("userProfileNumber")
 
             # 2. Get all gear
-            gear_list = garmin_client.get_gear(user_profile_id)
+            gear_list = get_garmin_client().get_gear(user_profile_id)
             if not gear_list:
                 return "No gear found."
 
             # 3. Get defaults to map gear -> activity types
-            defaults_list = garmin_client.get_gear_defaults(user_profile_id) or []
+            defaults_list = get_garmin_client().get_gear_defaults(user_profile_id) or []
             defaults_by_uuid = {}
             for d in defaults_list:
                 uuid = d.get("uuid")
@@ -110,7 +103,7 @@ def register_tools(app):
                 # 5. Get stats if requested
                 if include_stats:
                     try:
-                        stats = garmin_client.get_gear_stats(uuid)
+                        stats = get_garmin_client().get_gear_stats(uuid)
                         if stats:
                             gear_item["stats"] = {
                                 "total_activities": stats.get("totalActivities"),
@@ -164,7 +157,7 @@ def register_tools(app):
             gear_uuid: UUID of the gear to add (get from get_gear)
         """
         try:
-            garmin_client.add_gear_to_activity(activity_id, gear_uuid)
+            get_garmin_client().add_gear_to_activity(activity_id, gear_uuid)
 
             return json.dumps(
                 {
@@ -189,7 +182,7 @@ def register_tools(app):
             gear_uuid: UUID of the gear to remove
         """
         try:
-            garmin_client.remove_gear_from_activity(activity_id, gear_uuid)
+            get_garmin_client().remove_gear_from_activity(activity_id, gear_uuid)
 
             return json.dumps(
                 {

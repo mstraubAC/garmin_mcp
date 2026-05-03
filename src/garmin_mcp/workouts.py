@@ -6,16 +6,10 @@ import re
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from garmin_mcp.user_context import get_garmin_client
+
 _UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
 
-# The garmin_client will be set by the main file
-garmin_client = None
-
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def _fix_hr_zone_step(step: dict) -> None:
@@ -248,7 +242,7 @@ def register_tools(app):
         For detailed workout information including segments, use get_workout_by_id.
         """
         try:
-            workouts = garmin_client.get_workouts()
+            workouts = get_garmin_client().get_workouts()
             if not workouts:
                 return "No workouts found."
 
@@ -285,13 +279,13 @@ def register_tools(app):
                     return f"Invalid workout UUID format: {workout_id_str!r}"
                 # Training plan / Garmin Coach workout - use fbt-adaptive endpoint
                 url = f"workout-service/fbt-adaptive/{workout_id_str}"
-                response = garmin_client.garth.get("connectapi", url)
+                response = get_garmin_client().garth.get("connectapi", url)
                 if response.status_code != 200:
                     return f"No workout found with UUID {workout_id_str}. HTTP {response.status_code}"
                 workout = response.json()
             else:
                 # Regular workout - use standard endpoint
-                workout = garmin_client.get_workout_by_id(int(workout_id_str))
+                workout = get_garmin_client().get_workout_by_id(int(workout_id_str))
 
             if not workout:
                 return f"No workout found with ID {workout_id_str}."
@@ -313,7 +307,7 @@ def register_tools(app):
             workout_id: ID of the workout to download
         """
         try:
-            workout_data = garmin_client.download_workout(workout_id)
+            workout_data = get_garmin_client().download_workout(workout_id)
             if not workout_data:
                 return f"No workout data found for workout with ID {workout_id}."
 
@@ -379,7 +373,7 @@ def register_tools(app):
             _fix_hr_zone_steps(workout_data)
 
             # Pass dict directly - library handles conversion
-            result = garmin_client.upload_workout(workout_data)
+            result = get_garmin_client().upload_workout(workout_data)
 
             # Curate the response
             if isinstance(result, dict):
@@ -407,8 +401,8 @@ def register_tools(app):
             workout_id: ID of the workout to delete (get IDs from get_workouts)
         """
         try:
-            url = f"{garmin_client.garmin_workouts}/workout/{workout_id}"
-            response = garmin_client.garth.delete("connectapi", url, api=True)
+            url = f"{get_garmin_client().garmin_workouts}/workout/{workout_id}"
+            response = get_garmin_client().garth.delete("connectapi", url, api=True)
 
             if response.status_code == 204 or response.status_code == 200:
                 return json.dumps({
@@ -442,7 +436,7 @@ def register_tools(app):
             query = {
                 "query": f'query{{workoutScheduleSummariesScalar(startDate:"{start_date}", endDate:"{end_date}")}}'
             }
-            result = garmin_client.query_garmin_graphql(query)
+            result = get_garmin_client().query_garmin_graphql(query)
 
             if not result or "data" not in result:
                 return "No scheduled workouts found or error querying data."
@@ -482,7 +476,7 @@ def register_tools(app):
             query = {
                 "query": f'query{{trainingPlanScalar(calendarDate:"{calendar_date}", lang:"en-US", firstDayOfWeek:"monday")}}'
             }
-            result = garmin_client.query_garmin_graphql(query)
+            result = get_garmin_client().query_garmin_graphql(query)
 
             if not result or "data" not in result:
                 return "No training plan data found or error querying data."
@@ -536,7 +530,7 @@ def register_tools(app):
         """
         try:
             url = f"workout-service/schedule/{workout_id}"
-            response = garmin_client.garth.post("connectapi", url, json={"date": calendar_date})
+            response = get_garmin_client().garth.post("connectapi", url, json={"date": calendar_date})
 
             if response.status_code == 200:
                 return json.dumps({

@@ -6,14 +6,8 @@ import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
 
-# The garmin_client will be set by the main file
-garmin_client = None
+from garmin_mcp.user_context import get_garmin_client
 
-
-def configure(client):
-    """Configure the module with the Garmin client instance"""
-    global garmin_client
-    garmin_client = client
 
 
 def register_tools(app):
@@ -23,7 +17,7 @@ def register_tools(app):
     async def get_devices() -> str:
         """Get all Garmin devices associated with the user account"""
         try:
-            devices = garmin_client.get_devices()
+            devices = get_garmin_client().get_devices()
             if not devices:
                 return "No devices found."
 
@@ -62,7 +56,7 @@ def register_tools(app):
     async def get_device_last_used() -> str:
         """Get information about the last used Garmin device"""
         try:
-            device = garmin_client.get_device_last_used()
+            device = get_garmin_client().get_device_last_used()
             if not device:
                 return "No last used device found."
 
@@ -102,7 +96,7 @@ def register_tools(app):
             device_id: Device ID (can be obtained from get_devices or get_device_last_used)
         """
         try:
-            settings = garmin_client.get_device_settings(device_id)
+            settings = get_garmin_client().get_device_settings(device_id)
             if not settings:
                 return f"No settings found for device ID {device_id}."
 
@@ -167,7 +161,7 @@ def register_tools(app):
         metrics, along with other wearable devices on the account.
         """
         try:
-            data = garmin_client.get_primary_training_device()
+            data = get_garmin_client().get_primary_training_device()
             if not data:
                 return "No primary training device found."
 
@@ -223,7 +217,7 @@ def register_tools(app):
             date: Date in YYYY-MM-DD format
         """
         try:
-            solar_data = garmin_client.get_device_solar_data(device_id, date)
+            solar_data = get_garmin_client().get_device_solar_data(device_id, date)
             if not solar_data:
                 return f"No solar data found for device ID {device_id} on {date}."
 
@@ -268,7 +262,7 @@ def register_tools(app):
         Returns all configured alarms with their schedules, sounds, and enabled status.
         """
         try:
-            alarms = garmin_client.get_device_alarms()
+            alarms = get_garmin_client().get_device_alarms()
             if not alarms:
                 return "No device alarms found."
 
