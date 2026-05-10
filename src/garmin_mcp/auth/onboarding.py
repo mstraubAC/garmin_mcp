@@ -159,6 +159,14 @@ class OnboardingManager:
                 self._sessions.pop(t, None)
             return len(to_evict)
 
+    def bind_ticket(self, ticket: str, client_ip: str | None, user_agent_hash: str | None) -> None:
+        """Bind a ticket to the client IP and UA hash. Call after create_session."""
+        with self._lock:
+            session = self._sessions.get(ticket)
+            if session is not None:
+                session.client_ip = client_ip
+                session.user_agent_hash = user_agent_hash
+
     # Credentials submission ----------------------------------------------
 
     def submit_credentials(
