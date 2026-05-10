@@ -9,10 +9,17 @@ Endpoints:
 We deliberately keep the HTML inline (no template engine) — the surface is
 small enough that adding jinja2 doesn't pay back, and the strings here are
 the entirety of the user-visible UI.
+
+CSRF protection: every session gets a random token at creation time
+(OnboardingSession.csrf_token). GET /onboard sets it as an __Host-csrf
+cookie and embeds it as a hidden form field. Every POST verifies the
+posted field against the session token using hmac.compare_digest.
 """
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import html
 import logging
 from collections.abc import Callable
@@ -64,7 +71,7 @@ def _layout(body: str, title: str = "Garmin MCP onboarding") -> str:
 </html>"""
 
 
-def _credentials_form(ticket: str, error: str | None = None) -> str:
+def _credentials_form(ticket: str, csrf_token: str, error: str | None = None) -> str:
     err = f'<p class="err">{html.escape(error)}</p>' if error else ""
     return f"""<h1>Connect your Garmin account</h1>
 <p class="muted">One-time setup. Your password is used only to mint long-lived
@@ -72,6 +79,7 @@ OAuth tokens, then discarded — only the tokens are stored (encrypted at rest).
 {err}
 <form hx-post="/onboard/credentials" hx-target="#panel" hx-swap="outerHTML">
   <input type="hidden" name="ticket" value="{html.escape(ticket)}">
+  <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}">
   <label>Garmin email
     <input type="email" name="email" required autocomplete="username">
   </label>
@@ -82,11 +90,16 @@ OAuth tokens, then discarded — only the tokens are stored (encrypted at rest).
 </form>"""
 
 
-def _panel_html(state: OnboardingState, ticket: str, error: str | None = None) -> str:
+def _panel_html(
+    state: OnboardingState,
+    ticket: str,
+    csrf_token: str,
+    error: str | None = None,
+) -> str:
     """Returns the inner panel for a given session state. Wrapped in
     `<div id="panel">` so htmx can swap it on every poll."""
     if state == OnboardingState.NEW:
-        body = _credentials_form(ticket, error)
+        body = _credentials_form(ticket, csrf_token, error)
     elif state == OnboardingState.AUTHENTICATING:
         body = (
             '<h1>Signing in to Garmin…</h1><p class="muted">This usually takes a few seconds.</p>'
@@ -98,6 +111,7 @@ def _panel_html(state: OnboardingState, ticket: str, error: str | None = None) -
 {err}
 <form hx-post="/onboard/mfa" hx-target="#panel" hx-swap="outerHTML">
   <input type="hidden" name="ticket" value="{html.escape(ticket)}">
+  <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}">
   <label>Code
     <input type="text" name="code" inputmode="numeric" required
            autocomplete="one-time-code" autofocus>
@@ -131,6 +145,11 @@ sign-in link from Claude to start over.</p>"""
     return f'<div id="panel"{poll}>{body}</div>'
 
 
+def _verify_csrf(posted: str, expected: str) -> bool:
+    """Constant-time comparison of CSRF tokens. Returns False on any mismatch."""
+    return hmac.compare_digest(posted.encode(), expected.encode())
+
+
 # Route handlers ------------------------------------------------------------
 
 
@@ -158,26 +177,47 @@ def build_routes(
                 ),
                 status_code=404,
             )
-        page = _layout(_panel_html(session.state, ticket, session.error_message))
-        return HTMLResponse(page)
+        page = _layout(_panel_html(session.state, ticket, session.csrf_token, session.error_message))
+        response = HTMLResponse(page)
+        # Set the CSRF token as an __Host- cookie so it is bound to the
+        # origin and cannot be set by subdomains. The form posts the same
+        # value as a hidden field; we compare them on every POST.
+        response.set_cookie(
+            "__Host-csrf",
+            session.csrf_token,
+            httponly=True,
+            secure=True,
+            samesite="strict",
+            path="/",
+        )
+        return response
 
     async def submit_credentials(request: Request) -> Response:
         form = await request.form()
         ticket = (form.get("ticket") or "").strip()
         email = (form.get("email") or "").strip()
         password: str = form.get("password") or "" or ""
+
+        # CSRF check — must happen before any state lookup so an attacker
+        # who guesses a ticket and sends no token still gets a 400.
+        posted_csrf = (form.get("csrf_token") or "").strip()
+        session = manager.get(ticket)
+        if session is None or not _verify_csrf(posted_csrf, session.csrf_token):
+            csrf_token = session.csrf_token if session else ""
+            return HTMLResponse(
+                _panel_html(OnboardingState.NEW, ticket, csrf_token, "Invalid or missing CSRF token."),
+                status_code=400,
+            )
+
         if not all([ticket, email, password]):
             return HTMLResponse(
-                _panel_html(OnboardingState.NEW, ticket, "All fields are required."),
+                _panel_html(OnboardingState.NEW, ticket, session.csrf_token, "All fields are required."),
                 status_code=400,
             )
 
         # Validate User-Agent binding (H23) — lenient: only compare if the
         # session was bound to a UA hash during the OAuth callback.
-        session = manager.get(ticket)
-        if session is not None and session.user_agent_hash is not None:
-            import hashlib
-
+        if session.user_agent_hash is not None:
             current_ua = request.headers.get("User-Agent", "")
             current_hash = hashlib.sha256(current_ua.encode()).hexdigest() if current_ua else ""
             if current_hash != session.user_agent_hash:
@@ -185,6 +225,7 @@ def build_routes(
                     _panel_html(
                         OnboardingState.NEW,
                         ticket,
+                        session.csrf_token,
                         "Session binding mismatch — please restart onboarding.",
                     ),
                     status_code=403,
@@ -193,22 +234,24 @@ def build_routes(
         try:
             session = manager.submit_credentials(ticket, email, password)
         except OnboardingError as e:
+            session_now = manager.get(ticket)
+            csrf_token = session_now.csrf_token if session_now else ""
             return HTMLResponse(
-                _panel_html(OnboardingState.NEW, ticket, str(e)),
+                _panel_html(OnboardingState.NEW, ticket, csrf_token, str(e)),
                 status_code=400,
             )
-        return HTMLResponse(_panel_html(session.state, ticket))
+        return HTMLResponse(_panel_html(session.state, ticket, session.csrf_token))
 
     async def status(request: Request) -> Response:
         ticket = request.query_params.get("ticket", "")
         session = manager.get(ticket)
         if session is None:
             return HTMLResponse(
-                _panel_html(OnboardingState.EXPIRED, ticket),
+                _panel_html(OnboardingState.EXPIRED, ticket, ""),
                 status_code=404,
             )
         # On COMPLETE, inject the redirect URL via a tiny inline script.
-        panel = _panel_html(session.state, ticket, session.error_message)
+        panel = _panel_html(session.state, ticket, session.csrf_token, session.error_message)
         if session.state == OnboardingState.COMPLETE:
             redirect = redirect_resolver(ticket)
             if redirect:
@@ -224,18 +267,26 @@ def build_routes(
         ticket = (form.get("ticket") or "").strip()
         code = (form.get("code") or "").strip()
 
-        # Validate User-Agent binding (H23).
+        # CSRF check first.
+        posted_csrf = (form.get("csrf_token") or "").strip()
         session = manager.get(ticket)
-        if session is not None and session.user_agent_hash is not None:
-            import hashlib
+        if session is None or not _verify_csrf(posted_csrf, session.csrf_token):
+            csrf_token = session.csrf_token if session else ""
+            return HTMLResponse(
+                _panel_html(OnboardingState.AWAITING_MFA, ticket, csrf_token, "Invalid or missing CSRF token."),
+                status_code=400,
+            )
 
+        # Validate User-Agent binding (H23).
+        if session.user_agent_hash is not None:
             current_ua = request.headers.get("User-Agent", "")
             current_hash = hashlib.sha256(current_ua.encode()).hexdigest() if current_ua else ""
             if current_hash != session.user_agent_hash:
                 return HTMLResponse(
                     _panel_html(
-                        OnboardingState.MFA,
+                        OnboardingState.AWAITING_MFA,
                         ticket,
+                        session.csrf_token,
                         "Session binding mismatch — please restart onboarding.",
                     ),
                     status_code=403,
@@ -246,11 +297,12 @@ def build_routes(
         except OnboardingError as e:
             current = manager.get(ticket)
             current_state = current.state if current else OnboardingState.EXPIRED
+            csrf_token = current.csrf_token if current else ""
             return HTMLResponse(
-                _panel_html(current_state, ticket, str(e)),
+                _panel_html(current_state, ticket, csrf_token, str(e)),
                 status_code=400,
             )
-        return HTMLResponse(_panel_html(session.state, ticket))
+        return HTMLResponse(_panel_html(session.state, ticket, session.csrf_token))
 
     return [
         Route("/onboard", onboard_page, methods=["GET"]),

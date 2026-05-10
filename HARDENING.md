@@ -745,3 +745,338 @@ XS ≈ 1–10 lines · S ≈ 10–50 lines · M ≈ 50–150 lines.
 When all 14 land, delete this file and update
 `doc/11-risks-and-technical-debt.md` (remove resolved items, leave
 the deliberately-deferred ones with status updated).
+
+---
+
+## Addendum — three review passes (2026-05-10)
+
+Round 2 PRs (H1–H14) plus two correction rounds (H15–H28) have been
+reviewed. Status after all three passes:
+
+| Item | Issue | Status |
+|---|---|---|
+| X1 | CSRF tokens on `/onboard` forms | **STILL NOT IMPLEMENTED** |
+| X2a | UA binding checked in POST handlers | ✅ Fixed (H23) |
+| X2b | IP binding checked in POST handlers | **STILL MISSING** |
+| X2c | `OnboardingState.MFA` in `submit_mfa` line 237 | **RUNTIME CRASH BUG** |
+| X3 | `evict_terminal_sessions()` wired into cleanup loop | ✅ Fixed (H17) |
+| X4 | `/healthz` creates new `Storage` per call instead of using injected singleton | **STILL WRONG** |
+| X5 | Caddyfile: `header -X-Forwarded-For` is wrong directive (response, not request) | **STILL WRONG** |
+| X6 | Builder-stage images pinned by digest | ✅ Fixed (H26) |
+| X7 | CI digest check (`check-digests.sh` + `ci.yml`) | ✅ Fixed (H26) |
+| X8 | `cpus` + `pids` limits for both services | ✅ Fixed (H21) |
+| X9 | Caddy `tmpfs` for `/tmp` | ✅ Fixed (H21) |
+| X10 | `get_or_create_user` check-then-insert | accepted |
+| X11 | Caddy service `memory` limit | ✅ Fixed (H27) |
+
+**Remaining open: X1, X2b, X2c, X4, X5** — four items to fix in round 4.
+
+---
+
+## Round 4 — exact fix specifications
+
+### H29 — CSRF tokens on `/onboard` forms (X1)
+
+This is the **third time** this item is specified. The root cause
+of previous failures: `csrf_token` was added to `OnboardingSession`
+but `onboarding_routes.py` was **never touched**. The fix requires
+changes in **both** files.
+
+**Verified current state.**
+- `onboarding.py:70` — `csrf_token` field exists in `OnboardingSession` ✓
+- `onboarding_routes.py` — zero references to `csrf_token`, `hmac`,
+  `set_cookie`, or `__Host-`. No changes were made to this file in H22.
+
+**Step 1 — `onboarding_routes.py`: add `hmac` import**
+
+At the top of the file, add:
+```python
+import hmac
+```
+
+**Step 2 — `onboarding_routes.py`: pass `csrf_token` into `_credentials_form`**
+
+Change signature:
+```python
+def _credentials_form(ticket: str, csrf_token: str, error: str | None = None) -> str:
+```
+
+Inside the form HTML, after the ticket hidden input, add:
+```python
+  <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}">
+```
+
+**Step 3 — `onboarding_routes.py`: pass `csrf_token` into `_panel_html`**
+
+Change signature:
+```python
+def _panel_html(state: OnboardingState, ticket: str, csrf_token: str, error: str | None = None) -> str:
+```
+
+In the `NEW` branch, pass it to `_credentials_form`:
+```python
+body = _credentials_form(ticket, csrf_token, error)
+```
+
+In the `AWAITING_MFA` branch, add the hidden input after the ticket
+input:
+```python
+  <input type="hidden" name="csrf_token" value="{html.escape(csrf_token)}">
+```
+
+**Step 4 — `onboarding_routes.py`: `onboard_page` — set cookie, pass token**
+
+Replace the current `onboard_page` return statement:
+```python
+# BEFORE:
+page = _layout(_panel_html(session.state, ticket, session.error_message))
+return HTMLResponse(page)
+
+# AFTER:
+page = _layout(_panel_html(session.state, ticket, session.csrf_token, session.error_message))
+response = HTMLResponse(page)
+response.set_cookie(
+    "__Host-csrf",
+    session.csrf_token,
+    httponly=True,
+    secure=True,
+    samesite="strict",
+    path="/",
+)
+return response
+```
+
+All other `_panel_html` call sites (`status` handler) must also pass
+`session.csrf_token` as the third argument.
+
+**Step 5 — `onboarding_routes.py`: verify token in `submit_credentials`**
+
+After the existing field-presence check and before `manager.submit_credentials`,
+insert:
+```python
+posted_csrf = (form.get("csrf_token") or "").strip()
+session_pre = manager.get(ticket)
+if session_pre is None or not hmac.compare_digest(
+    posted_csrf.encode(), session_pre.csrf_token.encode()
+):
+    return HTMLResponse(
+        _panel_html(OnboardingState.NEW, ticket, session_pre.csrf_token if session_pre else "", "Invalid or missing CSRF token."),
+        status_code=400,
+    )
+```
+
+**Step 6 — `onboarding_routes.py`: verify token in `submit_mfa`**
+
+After reading `ticket` and `code` from the form, and before the UA
+binding check, insert:
+```python
+posted_csrf = (form.get("csrf_token") or "").strip()
+session_csrf = manager.get(ticket)
+if session_csrf is None or not hmac.compare_digest(
+    posted_csrf.encode(), session_csrf.csrf_token.encode()
+):
+    return HTMLResponse(
+        _panel_html(OnboardingState.AWAITING_MFA, ticket, session_csrf.csrf_token if session_csrf else "", "Invalid or missing CSRF token."),
+        status_code=400,
+    )
+```
+
+**Verification:**
+```bash
+grep -n "csrf_token\|__Host-csrf\|hmac" src/garmin_mcp/auth/onboarding_routes.py
+# Must return multiple hits in _credentials_form, _panel_html, onboard_page,
+# submit_credentials, and submit_mfa.
+```
+
+---
+
+### H30 — Fix IP binding check + `OnboardingState.MFA` crash (X2b + X2c)
+
+**Two bugs in `onboarding_routes.py`:**
+
+**Bug 1 — `OnboardingState.MFA` does not exist (line 237, runtime crash).**
+
+The enum in `onboarding.py` has: `NEW`, `AUTHENTICATING`, `AWAITING_MFA`,
+`COMPLETE`, `FAILED`, `EXPIRED`. There is no `MFA`.
+
+`submit_mfa` line 237 currently:
+```python
+                        OnboardingState.MFA,
+```
+Replace with:
+```python
+                        OnboardingState.AWAITING_MFA,
+```
+
+This is a one-word fix. Missing it causes `AttributeError` on any UA
+mismatch during the MFA step.
+
+**Bug 2 — IP binding checked for UA but not for IP.**
+
+Both `submit_credentials` and `submit_mfa` check `session.user_agent_hash`
+but never check `session.client_ip`. After the UA hash check in each
+handler, add the IP check:
+
+```python
+# After the UA hash check block, add:
+if session is not None and session.client_ip is not None:
+    incoming_ip = request.client.host if request.client else ""
+    if incoming_ip != session.client_ip:
+        return HTMLResponse(
+            _panel_html(
+                OnboardingState.NEW,   # or AWAITING_MFA in submit_mfa
+                ticket,
+                session.csrf_token,
+                "Session binding mismatch — please restart onboarding.",
+            ),
+            status_code=403,
+        )
+```
+
+**Verification:**
+```bash
+grep -n "client_ip\|client\.host" src/garmin_mcp/auth/onboarding_routes.py
+# Must find hits in submit_credentials and submit_mfa.
+
+python -c "from garmin_mcp.auth.onboarding import OnboardingState; print(OnboardingState.AWAITING_MFA)"
+# Must not raise AttributeError.
+```
+
+---
+
+### H31 — Fix `/healthz` to use the injected `Storage` instance (X4)
+
+**Current state** (`server.py:126–143`): creates a brand-new
+`Storage(db_path)` on every call. This is still an architecture
+violation — it opens a second SQLite connection that bypasses the
+production singleton, and creates an empty DB file if the path doesn't
+exist yet.
+
+**`Storage.close()` exists** (line 134 of `storage.py`), so the
+finally block is correct — but it should never need to be called
+because `healthz` should not own a storage instance at all.
+
+**The fix: make `healthz` a closure inside `make_app`.**
+
+In `make_app()` in `server.py`, locate where `storage` is created or
+accepted as a parameter. Define `healthz` as a nested function there:
+
+```python
+def make_app(
+    ...
+    storage: Storage | None = None,
+    ...
+):
+    _storage = storage  # capture in closure
+
+    async def healthz(_: Request) -> JSONResponse:
+        if _storage is None:
+            # stdio / single-user mode — no DB to check
+            return JSONResponse({"status": "ok"})
+        try:
+            await asyncio.to_thread(_storage.count_clients)
+            return JSONResponse({"status": "ok"})
+        except Exception as exc:
+            logging.getLogger(__name__).warning("healthz db check failed: %s", exc)
+            return JSONResponse({"status": "fail"}, status_code=503)
+
+    ...
+    routes = [Route("/healthz", healthz), ...]
+```
+
+Delete the module-level `healthz` function (lines 126–143) entirely.
+`asyncio` and `logging` are already imported at module level.
+
+**Verification:**
+```bash
+grep -n "sqlite3\|Storage(" src/garmin_mcp/server.py | grep -i health
+# Must return no output — healthz must not instantiate Storage itself.
+
+grep -n "count_clients" src/garmin_mcp/server.py
+# Must find it inside the healthz closure.
+```
+
+---
+
+### H32 — Fix Caddyfile XFF directive (X5)
+
+**Third attempt.** History of failures:
+- Round 1: `request_header X-Forwarded-For {remote_host}` then `request_header -X-Forwarded-For` — set then immediately deleted.
+- Round 2 (H19): replaced with `header_down -X-Forwarded-For` — strips response headers, not requests.
+- Round 3 (H25): replaced with `header -X-Forwarded-For` — in Caddy v2 the bare `header` directive in a site block also modifies **response** headers. Still wrong.
+
+**The only correct directive to strip an incoming request header in
+Caddy v2 is `request_header -<field>`.**
+
+`deploy/Caddyfile` line 50 currently reads:
+```caddy
+    header -X-Forwarded-For
+```
+
+**Replace that one line with:**
+```caddy
+    request_header -X-Forwarded-For
+```
+
+The full block after the fix must look exactly like this — do not
+change anything else:
+
+```caddy
+    request_header X-Forwarded-Proto {scheme}
+    request_header X-Real-IP        {remote_host}
+
+    # Strip any client-supplied X-Forwarded-For from incoming requests.
+    request_header -X-Forwarded-For
+    reverse_proxy garmin-mcp:8000 {
+        header_up X-Forwarded-For {remote_host}
+        flush_interval -1
+    }
+```
+
+**Verification — the only acceptable grep output:**
+```bash
+grep "X-Forwarded-For" deploy/Caddyfile
+#   request_header -X-Forwarded-For
+#       header_up X-Forwarded-For {remote_host}
+```
+If the output contains `header_down` or bare `header`, the fix is wrong.
+
+---
+
+### Round 4 verification checklist
+
+Run after all four PRs are merged:
+
+```bash
+# X1 — CSRF implemented in routes
+grep -c "csrf_token" src/garmin_mcp/auth/onboarding_routes.py
+# Expected: ≥ 6 (form fields, cookie, verifications)
+
+grep -c "__Host-csrf" src/garmin_mcp/auth/onboarding_routes.py
+# Expected: ≥ 1
+
+grep -c "hmac.compare_digest" src/garmin_mcp/auth/onboarding_routes.py
+# Expected: 2 (one per POST handler)
+
+# X2c — invalid enum value gone
+grep "OnboardingState\.MFA" src/garmin_mcp/auth/onboarding_routes.py
+# Expected: no output
+
+# X2b — IP check present
+grep "client_ip" src/garmin_mcp/auth/onboarding_routes.py
+# Expected: ≥ 2 hits (submit_credentials + submit_mfa)
+
+# X4 — no standalone Storage instantiation in healthz
+grep -n "Storage(" src/garmin_mcp/server.py
+# Expected: zero hits OR only in make_production_app, never in healthz
+
+# X5 — correct Caddy directive
+grep "X-Forwarded-For" deploy/Caddyfile
+# Expected: exactly two lines:
+#   request_header -X-Forwarded-For
+#       header_up X-Forwarded-For {remote_host}
+
+# Full test suite still green
+uv run pytest tests/unit/ tests/integration/ -q
+# Expected: all pass
+```
