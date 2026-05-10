@@ -123,24 +123,37 @@ def build_mcp(
     return mcp
 
 
-async def healthz(_: Request) -> JSONResponse:
-    """Health check that verifies the SQLite database is readable.
+def _make_healthz(storage: Storage | None):
+    """Return a /healthz handler.
 
-    Uses the project's ``Storage`` class (same connection settings as the
-    rest of the application) and closes the connection in a ``finally``
-    block so the file descriptor is never leaked, even on query errors.
+    When `storage` is provided (production mode), re-uses the application's
+    singleton connection — no extra file descriptors opened per call.
+    When `storage` is None (no-auth / test mode), opens a short-lived
+    connection to the configured DB path (original behaviour).
     """
-    db_path = os.environ.get("GARMIN_MCP_DATA_PATH", "/var/lib/garmin-mcp/state.db")
-    storage: Storage | None = None
-    try:
-        storage = Storage(db_path)
-        storage._conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
-        return JSONResponse({"status": "ok"})
-    except Exception:
-        return JSONResponse({"status": "unhealthy"}, status_code=503)
-    finally:
+
+    async def healthz(_: Request) -> JSONResponse:
         if storage is not None:
-            storage.close()
+            try:
+                storage._conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
+                return JSONResponse({"status": "ok"})
+            except Exception:
+                return JSONResponse({"status": "unhealthy"}, status_code=503)
+
+        # Fallback: open a fresh connection (no-auth / test mode).
+        db_path = os.environ.get("GARMIN_MCP_DATA_PATH", "/var/lib/garmin-mcp/state.db")
+        tmp: Storage | None = None
+        try:
+            tmp = Storage(db_path)
+            tmp._conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
+            return JSONResponse({"status": "ok"})
+        except Exception:
+            return JSONResponse({"status": "unhealthy"}, status_code=503)
+        finally:
+            if tmp is not None:
+                tmp.close()
+
+    return healthz
 
 
 class CaptureRegisterIPMiddleware:
@@ -223,6 +236,7 @@ def make_app(
     public_url: str | None = None,
     onboarding_manager: OnboardingManager | None = None,
     background_task_factories: list[Callable[[], Awaitable[None]]] | None = None,
+    storage: Storage | None = None,
 ) -> Starlette:
     """Build the ASGI app.
 
@@ -264,7 +278,7 @@ def make_app(
                 except (asyncio.CancelledError, Exception):
                     pass
 
-    routes: list = [Route("/healthz", healthz, methods=["GET"])]
+    routes: list = [Route("/healthz", _make_healthz(storage), methods=["GET"])]
     if auth_provider is not None:
         routes.append(_build_callback_route(auth_provider))
     if onboarding_manager is not None:
@@ -337,6 +351,7 @@ def make_production_app() -> Starlette:
         auth_provider=provider,
         public_url=public_url,
         onboarding_manager=onboarding,
+        storage=storage,
         background_task_factories=[
             lambda: cleanup_loop(storage, onboarding_manager=onboarding),
             lambda: audit_alert_loop(),
