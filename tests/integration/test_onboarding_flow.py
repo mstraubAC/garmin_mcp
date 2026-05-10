@@ -18,6 +18,7 @@ can script MFA behavior synchronously.
 
 from __future__ import annotations
 
+import re
 import time
 from contextlib import asynccontextmanager
 from urllib.parse import parse_qs, urlparse
@@ -294,6 +295,12 @@ async def _drive_to_callback(http, transport):
     return resp.headers["location"], client_id, verifier
 
 
+def _extract_csrf(html: str) -> str:
+    """Extract the CSRF token embedded in the hidden form field."""
+    m = re.search(r'<input type="hidden" name="csrf_token" value="([^"]+)"', html)
+    return m.group(1) if m else ""
+
+
 def _wait_for_state(onboarding, ticket, predicate, timeout=2.0):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -322,15 +329,21 @@ async def test_full_onboarding_completes_and_oauth_resumes(app_with_onboarding):
         location, client_id, verifier = await _drive_to_callback(http, ctx["transport"])
         ticket = parse_qs(urlparse(location).query)["ticket"][0]
 
-        # GET /onboard renders the credentials form
+        # GET /onboard renders the credentials form; also sets the CSRF cookie
         resp = await http.get("/onboard", params={"ticket": ticket})
         assert resp.status_code == 200
         assert "Garmin email" in resp.text
+        csrf_token = _extract_csrf(resp.text)
 
         # Submit credentials → server starts the worker
         resp = await http.post(
             "/onboard/credentials",
-            data={"ticket": ticket, "email": "alice@x.com", "password": "secret"},
+            data={
+                "ticket": ticket,
+                "email": "alice@x.com",
+                "password": "secret",
+                "csrf_token": csrf_token,
+            },
         )
         assert resp.status_code == 200
 
@@ -341,10 +354,10 @@ async def test_full_onboarding_completes_and_oauth_resumes(app_with_onboarding):
             lambda st: st.value == "AWAITING_MFA",
         )
 
-        # Submit the right MFA code
+        # Submit the right MFA code (CSRF token is stable for the whole session)
         resp = await http.post(
             "/onboard/mfa",
-            data={"ticket": ticket, "code": "123456"},
+            data={"ticket": ticket, "code": "123456", "csrf_token": csrf_token},
         )
         assert resp.status_code == 200
 
@@ -410,9 +423,17 @@ async def test_wrong_mfa_code_marks_failed(app_with_onboarding):
         location, _, _ = await _drive_to_callback(http, ctx["transport"])
         ticket = parse_qs(urlparse(location).query)["ticket"][0]
 
+        resp = await http.get("/onboard", params={"ticket": ticket})
+        csrf_token = _extract_csrf(resp.text)
+
         await http.post(
             "/onboard/credentials",
-            data={"ticket": ticket, "email": "alice@x.com", "password": "secret"},
+            data={
+                "ticket": ticket,
+                "email": "alice@x.com",
+                "password": "secret",
+                "csrf_token": csrf_token,
+            },
         )
         _wait_for_state(
             ctx["onboarding"],
@@ -420,7 +441,9 @@ async def test_wrong_mfa_code_marks_failed(app_with_onboarding):
             lambda st: st.value == "AWAITING_MFA",
         )
 
-        await http.post("/onboard/mfa", data={"ticket": ticket, "code": "wrong"})
+        await http.post(
+            "/onboard/mfa", data={"ticket": ticket, "code": "wrong", "csrf_token": csrf_token}
+        )
         session = _wait_for_state(
             ctx["onboarding"],
             ticket,
