@@ -317,7 +317,7 @@ def make_production_app() -> Starlette:
         public_url=public_url,
         onboarding_manager=onboarding,
         background_task_factories=[
-            lambda: cleanup_loop(storage, onboarding_manager=onboarding),
+            lambda: cleanup_loop(storage),
             lambda: audit_alert_loop(),
         ],
     )
