@@ -38,7 +38,7 @@ from garmin_mcp.auth.garmin_tokens import GarminTokenStore
 log = logging.getLogger(__name__)
 
 DEFAULT_TICKET_TTL_SECONDS = 5 * 60
-DEFAULT_MFA_TIMEOUT_SECONDS = 90
+DEFAULT_MFA_TIMEOUT_SECONDS = 5 * 60
 MAX_MFA_ATTEMPTS = 3
 
 
