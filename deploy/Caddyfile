@@ -25,6 +25,7 @@ garmin-mcp.example.com {
         Content-Security-Policy    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'"
         Permissions-Policy         "geolocation=(), microphone=(), camera=()"
         -Server
+        Set-Cookie SameSite=Strict
     }
 
 
