@@ -15,6 +15,18 @@
 garmin-mcp.example.com {
     encode zstd gzip
 
+    # Security headers (HARDENING A1)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Frame-Options            "DENY"
+        X-Content-Type-Options     "nosniff"
+        Referrer-Policy            "no-referrer"
+        Content-Security-Policy    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'"
+        Permissions-Policy         "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+
     # Network-layer rate limit on /register — defense in depth. Stops bot
     # floods before they reach the application. 10 requests per minute per
     # IP; bursts up to 15 are allowed then throttled.
