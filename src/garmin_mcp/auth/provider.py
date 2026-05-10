@@ -247,6 +247,15 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
                 user_id=user["user_id"],
                 on_success=lambda uid: self._issue_code_for(pending, uid),
             )
+            # Bind the ticket to the client IP and User-Agent hash captured
+            # by the /callback route (H23).
+            from garmin_mcp.user_context import onboard_ip, onboard_ua_hash
+
+            self.onboarding.bind_ticket(
+                session.ticket,
+                onboard_ip.get() or None,
+                onboard_ua_hash.get() or None,
+            )
             self.audit.record(
                 "authorize.callback",
                 outcome="needs_onboarding",

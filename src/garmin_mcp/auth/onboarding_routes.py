@@ -171,6 +171,25 @@ def build_routes(
                 _panel_html(OnboardingState.NEW, ticket, "All fields are required."),
                 status_code=400,
             )
+
+        # Validate User-Agent binding (H23) — lenient: only compare if the
+        # session was bound to a UA hash during the OAuth callback.
+        session = manager.get(ticket)
+        if session is not None and session.user_agent_hash is not None:
+            import hashlib
+
+            current_ua = request.headers.get("User-Agent", "")
+            current_hash = hashlib.sha256(current_ua.encode()).hexdigest() if current_ua else ""
+            if current_hash != session.user_agent_hash:
+                return HTMLResponse(
+                    _panel_html(
+                        OnboardingState.NEW,
+                        ticket,
+                        "Session binding mismatch — please restart onboarding.",
+                    ),
+                    status_code=403,
+                )
+
         try:
             session = manager.submit_credentials(ticket, email, password)
         except OnboardingError as e:
@@ -204,6 +223,24 @@ def build_routes(
         form = await request.form()
         ticket = (form.get("ticket") or "").strip()
         code = (form.get("code") or "").strip()
+
+        # Validate User-Agent binding (H23).
+        session = manager.get(ticket)
+        if session is not None and session.user_agent_hash is not None:
+            import hashlib
+
+            current_ua = request.headers.get("User-Agent", "")
+            current_hash = hashlib.sha256(current_ua.encode()).hexdigest() if current_ua else ""
+            if current_hash != session.user_agent_hash:
+                return HTMLResponse(
+                    _panel_html(
+                        OnboardingState.MFA,
+                        ticket,
+                        "Session binding mismatch — please restart onboarding.",
+                    ),
+                    status_code=403,
+                )
+
         try:
             session = manager.submit_mfa(ticket, code)
         except OnboardingError as e:
