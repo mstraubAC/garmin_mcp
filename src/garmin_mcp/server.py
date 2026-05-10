@@ -127,6 +127,24 @@ async def healthz(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+class CaptureRegisterIPMiddleware:
+    """Captures client IP on /register POST into user_context.register_ip."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if (scope["type"] == "http" and scope.get("path") == "/register"
+                and scope.get("method") == "POST"):
+            xff = dict(scope.get("headers", [])).get(b"x-forwarded-for", b"").decode()
+            ip = xff.split(",")[0].strip() if xff else scope.get("client", ("", 0))[0]
+            from garmin_mcp.user_context import register_ip as _rip
+            _rip.set(ip)
+        await self.app(scope, receive, send)
+
+
+
+
 def _default_client_provider():
     # Legacy single-user mode: uses Garmin creds from env vars.
     # In production (make_production_app), this path is never hit —
@@ -318,21 +336,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-# ---- /register IP capture middleware ------------------------------------
-
-class CaptureRegisterIPMiddleware:
-    """Captures client IP on /register POST into user_context.register_ip."""
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if (scope["type"] == "http" and scope.get("path") == "/register"
-                and scope.get("method") == "POST"):
-            xff = dict(scope.get("headers", [])).get(b"x-forwarded-for", b"").decode()
-            ip = xff.split(",")[0].strip() if xff else scope.get("client", ("", 0))[0]
-            from garmin_mcp.user_context import register_ip
-            register_ip.set(ip)
-        await self.app(scope, receive, send)
-
-
