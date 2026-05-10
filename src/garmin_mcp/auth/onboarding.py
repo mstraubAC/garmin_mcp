@@ -66,6 +66,8 @@ class OnboardingSession:
     on_success: Callable[[str], str] | None = None
     # Populated only on COMPLETE — the URL we redirect the browser to.
     redirect_url: str | None = None
+    # CSRF token — set at session creation, verified on every POST.
+    csrf_token: str = field(default_factory=lambda: secrets.token_urlsafe(32))
     # Internal: queue the worker waits on for MFA codes
     _mfa_queue: Queue | None = field(default=None, repr=False)
     _mfa_event: threading.Event | None = field(default=None, repr=False)
