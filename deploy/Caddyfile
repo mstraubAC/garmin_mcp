@@ -45,12 +45,12 @@ garmin-mcp.example.com {
     # Forward the real client IP so the app's per-IP rate limiter doesn't
     # see the docker bridge address as the source of every request.
     request_header X-Forwarded-Proto {scheme}
-    request_header X-Forwarded-For  {remote_host}
     request_header X-Real-IP        {remote_host}
 
-    # Strip any client-supplied X-Forwarded-For, then Caddy sets its own.
-    request_header -X-Forwarded-For
+    # Strip any client-supplied X-Forwarded-For, then let reverse_proxy add it.
+    header_down -X-Forwarded-For
     reverse_proxy garmin-mcp:8000 {
+        header_up X-Forwarded-For {remote_host}
         # Stream the SSE/streamable-HTTP MCP responses without buffering.
         flush_interval -1
     }
