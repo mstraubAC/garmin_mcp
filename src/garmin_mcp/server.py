@@ -125,15 +125,21 @@ def build_mcp(
 async def healthz(_: Request) -> JSONResponse:
     """Health check that verifies the SQLite database is readable."""
     import sqlite3
-    from pathlib import Path
     db_path = os.environ.get("GARMIN_MCP_DATA_PATH", "/var/lib/garmin-mcp/state.db")
     try:
         conn = sqlite3.connect(db_path)
         conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
         conn.close()
         return JSONResponse({"status": "ok"})
-    except Exception as e:
-        return JSONResponse({"status": "unhealthy", "error": str(e)}, status_code=503)
+    except Exception:
+        return JSONResponse({"status": "unhealthy"}, status_code=503)
+
+
+def _default_client_provider():
+    # Legacy single-user mode: uses Garmin creds from env vars.
+    # In production (make_production_app), this path is never hit —
+    # client_cache is passed directly.
+    import os as _os
 
     from garmin_mcp.tools._token_utils import init_api
 
