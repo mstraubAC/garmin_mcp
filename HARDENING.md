@@ -755,13 +755,13 @@ reviewed. Status after all three passes:
 
 | Item | Issue | Status |
 |---|---|---|
-| X1 | CSRF tokens on `/onboard` forms | **STILL NOT IMPLEMENTED** |
+| X1 | CSRF tokens on `/onboard` forms | ✅ Fixed (H29, #62) |
 | X2a | UA binding checked in POST handlers | ✅ Fixed (H23) |
-| X2b | IP binding checked in POST handlers | **STILL MISSING** |
-| X2c | `OnboardingState.MFA` in `submit_mfa` line 237 | **RUNTIME CRASH BUG** |
+| X2b | IP binding checked in POST handlers | ✅ Fixed (H30, #63) |
+| X2c | `OnboardingState.MFA` in `submit_mfa` line 237 | ✅ Fixed (H29, #62) |
 | X3 | `evict_terminal_sessions()` wired into cleanup loop | ✅ Fixed (H17) |
-| X4 | `/healthz` creates new `Storage` per call instead of using injected singleton | **STILL WRONG** |
-| X5 | Caddyfile: `header -X-Forwarded-For` is wrong directive (response, not request) | **STILL WRONG** |
+| X4 | `/healthz` creates new `Storage` per call instead of using injected singleton | ✅ Fixed (H31, #64) |
+| X5 | Caddyfile: `header -X-Forwarded-For` is wrong directive (response, not request) | ✅ Fixed (H32, #65) |
 | X6 | Builder-stage images pinned by digest | ✅ Fixed (H26) |
 | X7 | CI digest check (`check-digests.sh` + `ci.yml`) | ✅ Fixed (H26) |
 | X8 | `cpus` + `pids` limits for both services | ✅ Fixed (H21) |
@@ -769,7 +769,7 @@ reviewed. Status after all three passes:
 | X10 | `get_or_create_user` check-then-insert | accepted |
 | X11 | Caddy service `memory` limit | ✅ Fixed (H27) |
 
-**Remaining open: X1, X2b, X2c, X4, X5** — four items to fix in round 4.
+**All items resolved.** Round 4 (H29–H32) landed four fixes in #62–#65.
 
 ---
 
