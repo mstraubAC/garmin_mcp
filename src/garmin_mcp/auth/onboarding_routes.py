@@ -238,7 +238,11 @@ def build_routes(
                 )
         if session.client_ip is not None:
             xff = request.headers.get("X-Forwarded-For", "")
-            current_ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "")
+            current_ip = (
+                xff.split(",")[0].strip()
+                if xff
+                else (request.client.host if request.client else "")
+            )
             if current_ip != session.client_ip:
                 return HTMLResponse(
                     _panel_html(
@@ -317,7 +321,11 @@ def build_routes(
                 )
         if session.client_ip is not None:
             xff = request.headers.get("X-Forwarded-For", "")
-            current_ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "")
+            current_ip = (
+                xff.split(",")[0].strip()
+                if xff
+                else (request.client.host if request.client else "")
+            )
             if current_ip != session.client_ip:
                 return HTMLResponse(
                     _panel_html(
