@@ -18,7 +18,7 @@ def storage(tmp_path):
 
 async def test_tick_once_returns_zero_counts_on_empty_db(storage):
     counts = await tick_once(storage)
-    assert counts == {"clients": 0, "pending": 0}
+    assert counts == {"clients": 0, "pending": 0, "sessions": 0}
 
 
 async def test_tick_once_drops_old_unused_clients(storage):
