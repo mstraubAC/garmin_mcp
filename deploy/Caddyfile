@@ -46,8 +46,11 @@ garmin-mcp.example.com {
     request_header X-Forwarded-Proto {scheme}
     request_header X-Real-IP        {remote_host}
 
-    # Strip any client-supplied X-Forwarded-For, then let reverse_proxy add it.
-    header -X-Forwarded-For
+    # Strip any client-supplied X-Forwarded-For before forwarding to the app,
+    # then let reverse_proxy set it to the real client IP.
+    # `request_header` modifies the upstream request; `header` modifies the
+    # downstream response — only the former prevents XFF spoofing.
+    request_header -X-Forwarded-For
     reverse_proxy garmin-mcp:8000 {
         header_up X-Forwarded-For {remote_host}
         # Stream the SSE/streamable-HTTP MCP responses without buffering.
