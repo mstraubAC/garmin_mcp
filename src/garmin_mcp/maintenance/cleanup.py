@@ -30,6 +30,7 @@ DEFAULT_IDLE_AFTER = 90 * 24 * 3600  # 90 days
 
 async def cleanup_loop(
     storage: Storage,
+    onboarding_manager=None,
     interval_seconds: int = DEFAULT_INTERVAL_SECONDS,
     never_used_after: int = DEFAULT_NEVER_USED_AFTER,
     idle_after: int = DEFAULT_IDLE_AFTER,
@@ -41,13 +42,14 @@ async def cleanup_loop(
         except asyncio.CancelledError:
             return
         try:
-            await tick_once(storage, never_used_after, idle_after)
+            await tick_once(storage, onboarding_manager, never_used_after, idle_after)
         except Exception:  # pragma: no cover — defense against unknown failures
             log.exception("cleanup tick failed")
 
 
 async def tick_once(
     storage: Storage,
+    onboarding_manager=None,
     never_used_after: int = DEFAULT_NEVER_USED_AFTER,
     idle_after: int = DEFAULT_IDLE_AFTER,
 ) -> dict[str, int]:
@@ -64,4 +66,5 @@ async def tick_once(
             n_clients,
             n_pending,
         )
-    return {"clients": n_clients, "pending": n_pending}
+    n_sessions = onboarding_manager.evict_terminal_sessions() if onboarding_manager else 0
+    return {"clients": n_clients, "pending": n_pending, "sessions": n_sessions}
