@@ -11,11 +11,17 @@ Claims:
     scope    space-separated list of granted scopes
     iat      issued-at (unix seconds)
     exp      expiry (unix seconds)
+
+Key rotation:
+    JWT_SIGNING_KEY can be a plain string (single key, no kid) or a JSON
+    array of {"kid": "<id>", "key": "<secret>"} objects. The first entry
+    is used for signing; all entries are accepted for verification by kid.
 """
 
 from __future__ import annotations
 
 import base64
+import json
 import secrets
 import time
 from dataclasses import dataclass
@@ -43,8 +49,23 @@ class TokenError(Exception):
     """Raised when verification fails (expired, bad signature, missing claim)."""
 
 
+def _parse_signing_keys(raw: str) -> list[tuple[str, str]]:
+    """Parse JWT_SIGNING_KEY: plain string → [("default", raw)], JSON array → list of (kid, key)."""
+    raw = raw.strip()
+    if raw.startswith("["):
+        pairs = json.loads(raw)
+        if not isinstance(pairs, list) or not pairs:
+            raise ValueError("JWT_SIGNING_KEY JSON array must be non-empty")
+        return [(p["kid"], p["key"]) for p in pairs]
+    return [("default", raw)]
+
+
 class JwtSigner:
-    """HS256 signer/verifier. One instance per process; thread-safe."""
+    """HS256 signer/verifier with kid-based key rotation.
+
+    The first (kid, key) pair is used for signing; all pairs are accepted
+    for verification by matching the kid header in the token.
+    """
 
     def __init__(
         self,
@@ -55,7 +76,8 @@ class JwtSigner:
     ):
         if not signing_key:
             raise ValueError("signing_key is required")
-        self._key = signing_key
+        self._keys: list[tuple[str, str]] = _parse_signing_keys(signing_key)
+        self._key_map: dict[str, str] = {kid: key for kid, key in self._keys}
         self._issuer = issuer
         self._audience = audience
         self._algorithm = algorithm
@@ -67,6 +89,7 @@ class JwtSigner:
         scopes: list[str],
         ttl_seconds: int = 3600,
     ) -> IssuedToken:
+        kid, key = self._keys[0]
         now = int(time.time())
         exp = now + ttl_seconds
         payload = {
@@ -77,17 +100,27 @@ class JwtSigner:
             "scope": " ".join(scopes),
             "iat": now,
             "exp": exp,
-            # `jti` lets us implement single-use semantics later if needed.
             "jti": secrets.token_urlsafe(16),
         }
-        token = pyjwt.encode(payload, self._key, algorithm=self._algorithm)
+        headers = {"kid": kid}
+        token = pyjwt.encode(payload, key, algorithm=self._algorithm, headers=headers)
         return IssuedToken(token=token, expires_at=exp)
 
     def verify(self, token: str) -> TokenClaims:
         try:
+            unverified_headers = pyjwt.get_unverified_header(token)
+        except pyjwt.PyJWTError as e:
+            raise TokenError(str(e)) from e
+
+        kid = unverified_headers.get("kid", "default")
+        key = self._key_map.get(kid)
+        if key is None:
+            raise TokenError(f"unknown signing key: kid={kid}")
+
+        try:
             payload = pyjwt.decode(
                 token,
-                self._key,
+                key,
                 algorithms=[self._algorithm],
                 audience=self._audience,
                 issuer=self._issuer,
