@@ -206,7 +206,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
             )
             raise TokenError(
                 error="server_error",  # type: ignore[arg-type]
-                error_description=f"entra exchange failed: {e}",
+                error_description="server error",
             )
 
         user = self.storage.get_or_create_user(
