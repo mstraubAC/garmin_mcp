@@ -115,6 +115,24 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
                 error_description="rate limit exceeded; try again later",
             )
 
+        # Validate grant_types and response_types against allowlist.
+        allowed_grant_types = {"authorization_code", "refresh_token"}
+        allowed_response_types = {"code"}
+        if client_info.grant_types:
+            for gt in client_info.grant_types:
+                if gt not in allowed_grant_types:
+                    raise RegistrationError(
+                        error="invalid_client_metadata",
+                        error_description=f"unsupported grant_type: {gt}",
+                    )
+        if client_info.response_types:
+            for rt in client_info.response_types:
+                if rt not in allowed_response_types:
+                    raise RegistrationError(
+                        error="invalid_client_metadata",
+                        error_description=f"unsupported response_type: {rt}",
+                    )
+
         # Global cap
         if not self.guard.under_global_cap():
             raise RegistrationError(
