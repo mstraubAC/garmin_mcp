@@ -124,7 +124,16 @@ def build_mcp(
 
 
 async def healthz(_: Request) -> JSONResponse:
-    return JSONResponse({"status": "ok"})
+    """Health check that verifies the SQLite database is readable."""
+    import sqlite3
+    db_path = os.environ.get("GARMIN_MCP_DATA_PATH", "/var/lib/garmin-mcp/state.db")
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
+        conn.close()
+        return JSONResponse({"status": "ok"})
+    except Exception:
+        return JSONResponse({"status": "unhealthy"}, status_code=503)
 
 
 class CaptureRegisterIPMiddleware:
