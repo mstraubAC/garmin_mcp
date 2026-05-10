@@ -134,6 +134,15 @@ class MultiUserClientCache(ClientCache):
         if token_blob is None:
             raise UserNotOnboardedError(user_id)
 
+        # Double-check: another thread may have loaded + cached this entry
+        # while we were blocking on decrypting the token blob.
+        with self._lock:
+            entry = self._entries.get(user_id)
+            if entry is not None:
+                client_cached, last_used = entry
+                if now - last_used < self._idle_ttl:
+                    return client_cached
+
         client = self._garmin_factory()
         client.garth.loads(token_blob)
 
