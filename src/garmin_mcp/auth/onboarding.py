@@ -111,7 +111,7 @@ class OnboardingManager:
                 len([s for s in self._sessions.values() if not _is_terminal(s.state)])
                 >= self._max_concurrent
             ):
-                log.warning("onboarding session cap reached — rejecting new session")
+                log.warning("onboarding session cap reached")
             raise OnboardingError("too many concurrent onboarding sessions")
             ticket = secrets.token_urlsafe(24)
             now = time.monotonic()
@@ -147,13 +147,8 @@ class OnboardingManager:
         for t in expired:
             self._sessions.pop(t, None)
 
-
     def evict_terminal_sessions(self) -> int:
-        """Drop sessions in COMPLETE / FAILED / EXPIRED state. Returns count evicted.
-
-        Called by the background cleanup loop (not create_session) so eviction
-        is time-driven, not traffic-driven.
-        """
+        """Drop COMPLETE/FAILED/EXPIRED sessions. Returns count evicted."""
         with self._lock:
             now = time.monotonic()
             to_evict = [

@@ -126,6 +126,7 @@ def build_mcp(
 async def healthz(_: Request) -> JSONResponse:
     """Health check that verifies the SQLite database is readable."""
     import sqlite3
+
     db_path = os.environ.get("GARMIN_MCP_DATA_PATH", "/var/lib/garmin-mcp/state.db")
     try:
         conn = sqlite3.connect(db_path)
