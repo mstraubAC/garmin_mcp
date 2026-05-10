@@ -124,17 +124,23 @@ def build_mcp(
 
 
 async def healthz(_: Request) -> JSONResponse:
-    """Health check that verifies the SQLite database is readable."""
-    import sqlite3
+    """Health check that verifies the SQLite database is readable.
 
+    Uses the project's ``Storage`` class (same connection settings as the
+    rest of the application) and closes the connection in a ``finally``
+    block so the file descriptor is never leaked, even on query errors.
+    """
     db_path = os.environ.get("GARMIN_MCP_DATA_PATH", "/var/lib/garmin-mcp/state.db")
+    storage: Storage | None = None
     try:
-        conn = sqlite3.connect(db_path)
-        conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
-        conn.close()
+        storage = Storage(db_path)
+        storage._conn.execute("SELECT count(*) FROM oauth_clients").fetchone()
         return JSONResponse({"status": "ok"})
     except Exception:
         return JSONResponse({"status": "unhealthy"}, status_code=503)
+    finally:
+        if storage is not None:
+            storage.close()
 
 
 class CaptureRegisterIPMiddleware:
