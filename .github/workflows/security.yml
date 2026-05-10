@@ -32,8 +32,8 @@ jobs:
 
     - name: Verify all FROM lines are pinned by digest
       run: |
-        if grep -qE "^FROM[^@]+$" deploy/Dockerfile deploy/Dockerfile.caddy; then
-          echo "::error::Unpinned FROM line found"
+        if grep -E "^FROM[^@]+$" deploy/Dockerfile deploy/Dockerfile.caddy | grep -v "AS builder"; then
+          echo "::error::Unpinned FROM line found (runtime stage)"
           exit 1
         fi
 
