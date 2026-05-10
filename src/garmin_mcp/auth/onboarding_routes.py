@@ -221,12 +221,29 @@ def build_routes(
                 status_code=400,
             )
 
-        # Validate User-Agent binding (H23) — lenient: only compare if the
-        # session was bound to a UA hash during the OAuth callback.
+        # Validate client binding (H23/H30) — lenient: only compare if the
+        # session was bound during the OAuth callback.
         if session.user_agent_hash is not None:
             current_ua = request.headers.get("User-Agent", "")
             current_hash = hashlib.sha256(current_ua.encode()).hexdigest() if current_ua else ""
             if current_hash != session.user_agent_hash:
+                return HTMLResponse(
+                    _panel_html(
+                        OnboardingState.NEW,
+                        ticket,
+                        session.csrf_token,
+                        "Session binding mismatch — please restart onboarding.",
+                    ),
+                    status_code=403,
+                )
+        if session.client_ip is not None:
+            xff = request.headers.get("X-Forwarded-For", "")
+            current_ip = (
+                xff.split(",")[0].strip()
+                if xff
+                else (request.client.host if request.client else "")
+            )
+            if current_ip != session.client_ip:
                 return HTMLResponse(
                     _panel_html(
                         OnboardingState.NEW,
@@ -288,11 +305,28 @@ def build_routes(
                 status_code=400,
             )
 
-        # Validate User-Agent binding (H23).
+        # Validate client binding (H23/H30) — lenient: only compare if bound.
         if session.user_agent_hash is not None:
             current_ua = request.headers.get("User-Agent", "")
             current_hash = hashlib.sha256(current_ua.encode()).hexdigest() if current_ua else ""
             if current_hash != session.user_agent_hash:
+                return HTMLResponse(
+                    _panel_html(
+                        OnboardingState.AWAITING_MFA,
+                        ticket,
+                        session.csrf_token,
+                        "Session binding mismatch — please restart onboarding.",
+                    ),
+                    status_code=403,
+                )
+        if session.client_ip is not None:
+            xff = request.headers.get("X-Forwarded-For", "")
+            current_ip = (
+                xff.split(",")[0].strip()
+                if xff
+                else (request.client.host if request.client else "")
+            )
+            if current_ip != session.client_ip:
                 return HTMLResponse(
                     _panel_html(
                         OnboardingState.AWAITING_MFA,
