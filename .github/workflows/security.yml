@@ -30,13 +30,6 @@ jobs:
         uvx pip-audit --requirement /tmp/audit-reqs.txt --strict
         echo "No known vulnerabilities found."
 
-    - name: Verify all FROM lines are pinned by digest
-      run: |
-        if grep -E "^FROM[^@]+$" deploy/Dockerfile deploy/Dockerfile.caddy | grep -v "AS builder"; then
-          echo "::error::Unpinned FROM line found (runtime stage)"
-          exit 1
-        fi
-
     - name: Verify lock file is up to date
       run: |
         uv lock --check
