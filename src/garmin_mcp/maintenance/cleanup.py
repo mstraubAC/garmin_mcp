@@ -17,6 +17,7 @@ matters more than catching every error.
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 import logging
 
 from garmin_mcp.auth.storage import Storage
@@ -48,20 +49,26 @@ async def cleanup_loop(
 
 async def tick_once(
     storage: Storage,
+    onboarding_manager: Any | None = None,
     never_used_after: int = DEFAULT_NEVER_USED_AFTER,
     idle_after: int = DEFAULT_IDLE_AFTER,
 ) -> dict[str, int]:
-    """Run one cleanup pass. Returns counts for tests / logging."""
-    n_clients = await asyncio.to_thread(
-        storage.cleanup_unused_clients,
-        never_used_after=never_used_after,
-        idle_after=idle_after,
-    )
-    n_pending = await asyncio.to_thread(storage.cleanup_expired_pending)
-    if n_clients or n_pending:
-        log.info(
-            "cleanup: removed %d unused clients, %d expired pending auths",
-            n_clients,
-            n_pending,
-        )
-    return {"clients": n_clients, "pending": n_pending}
+    """Run one cleanup pass — SQLite housekeeping + onboarding session eviction."""
+    n_clients = 0
+    n_pending = 0
+    with storage._conn:
+        n_clients = storage._conn.execute(
+            "DELETE FROM oauth_clients WHERE "
+            "(registered_at < ? AND last_used_at IS NULL) OR "
+            "(last_used_at IS NOT NULL AND last_used_at < ?)",
+            (int(time.time()) - never_used_after, int(time.time()) - idle_after),
+        ).rowcount
+        n_pending = storage._conn.execute(
+            "DELETE FROM pending_authorizations WHERE expires_at < ?",
+            (int(time.time()),),
+        ).rowcount
+        storage._conn.commit()
+    n_sessions = 0
+    if onboarding_manager is not None:
+        n_sessions = onboarding_manager.evict_terminal_sessions()
+    return {"clients": n_clients, "pending": n_pending, "sessions": n_sessions}

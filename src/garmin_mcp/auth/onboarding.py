@@ -38,7 +38,7 @@ from garmin_mcp.auth.garmin_tokens import GarminTokenStore
 log = logging.getLogger(__name__)
 
 DEFAULT_TICKET_TTL_SECONDS = 5 * 60
-DEFAULT_MFA_TIMEOUT_SECONDS = 5 * 60
+DEFAULT_MFA_TIMEOUT_SECONDS = 90
 MAX_MFA_ATTEMPTS = 3
 
 
@@ -111,7 +111,8 @@ class OnboardingManager:
                 len([s for s in self._sessions.values() if not _is_terminal(s.state)])
                 >= self._max_concurrent
             ):
-                raise OnboardingError("too many concurrent onboarding sessions")
+                log.warning("onboarding session cap reached — rejecting new session")
+            raise OnboardingError("too many concurrent onboarding sessions")
             ticket = secrets.token_urlsafe(24)
             now = time.monotonic()
             session = OnboardingSession(
@@ -145,6 +146,24 @@ class OnboardingManager:
         expired = [t for t, s in self._sessions.items() if now > s.expires_at + 60]
         for t in expired:
             self._sessions.pop(t, None)
+
+
+    def evict_terminal_sessions(self) -> int:
+        """Drop sessions in COMPLETE / FAILED / EXPIRED state. Returns count evicted.
+
+        Called by the background cleanup loop (not create_session) so eviction
+        is time-driven, not traffic-driven.
+        """
+        with self._lock:
+            now = time.monotonic()
+            to_evict = [
+                t
+                for t, s in self._sessions.items()
+                if _is_terminal(s.state) or now > s.expires_at + 60
+            ]
+            for t in to_evict:
+                self._sessions.pop(t, None)
+            return len(to_evict)
 
     # Credentials submission ----------------------------------------------
 
