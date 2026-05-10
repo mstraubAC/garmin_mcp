@@ -40,6 +40,8 @@ services:
       resources:
         limits:
           memory: 256M
+          cpus: "1.0"
+          pids: 256
         reservations:
           memory: 128M
     # Healthcheck is also defined inside the image so `docker ps` shows it
@@ -76,6 +78,13 @@ services:
     security_opt:
       - no-new-privileges:true
     read_only: true
+    tmpfs:
+      - /tmp:size=32M
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          pids: 64
     depends_on:
       garmin-mcp:
         condition: service_healthy
