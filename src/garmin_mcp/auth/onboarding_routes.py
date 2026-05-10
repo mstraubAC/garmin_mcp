@@ -171,6 +171,21 @@ def build_routes(
                 _panel_html(OnboardingState.NEW, ticket, "All fields are required."),
                 status_code=400,
             )
+        # Validate ticket binding (H23). Skip if session binding not set.
+        if ticket:
+            s = manager.get(ticket)
+            if s is not None and s.user_agent_hash:
+                import hashlib
+
+                current_ua = request.headers.get("user-agent", "")
+                current_hash = hashlib.sha256(current_ua.encode()).hexdigest()
+                if current_hash != s.user_agent_hash:
+                    return HTMLResponse(
+                        _panel_html(
+                            OnboardingState.NEW, ticket, "Session is bound to a different browser."
+                        ),
+                        status_code=400,
+                    )
         try:
             session = manager.submit_credentials(ticket, email, password)
         except OnboardingError as e:

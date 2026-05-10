@@ -34,6 +34,9 @@ DEFAULT_USER_ID = "default"
 # ContextVar for client IP captured on POST /register.
 register_ip: ContextVar[str] = ContextVar("garmin_mcp_register_ip", default="")
 
+onboard_ip: ContextVar[str] = ContextVar("onboard_ip", default="")
+onboard_ua_hash: ContextVar[str] = ContextVar("onboard_ua_hash", default="")
+
 _current_user_id: ContextVar[str | None] = ContextVar("garmin_mcp_current_user_id", default=None)
 
 

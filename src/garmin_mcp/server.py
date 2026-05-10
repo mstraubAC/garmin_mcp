@@ -186,6 +186,15 @@ def _build_callback_route(auth_provider: GarminMcpProvider) -> Route:
         state = request.query_params.get("state")
         if not code or not state:
             return Response("missing code or state", status_code=400)
+        # Bind ticket to this browser (H23).
+        import hashlib
+
+        from garmin_mcp.user_context import onboard_ip, onboard_ua_hash
+
+        onboard_ip.set(request.client.host if request.client else "")
+        ua = request.headers.get("user-agent", "")
+        onboard_ua_hash.set(hashlib.sha256(ua.encode()).hexdigest() if ua else "")
+
         try:
             redirect_url = await auth_provider.complete_authorization(state, code)
         except Exception as e:

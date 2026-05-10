@@ -70,6 +70,9 @@ class OnboardingSession:
     _mfa_queue: Queue | None = field(default=None, repr=False)
     _mfa_event: threading.Event | None = field(default=None, repr=False)
     _worker: threading.Thread | None = field(default=None, repr=False)
+    # Ticket binding (H12/H23)
+    client_ip: str | None = None
+    user_agent_hash: str | None = None
 
 
 class OnboardingError(Exception):
