@@ -177,7 +177,9 @@ def build_routes(
                 ),
                 status_code=404,
             )
-        page = _layout(_panel_html(session.state, ticket, session.csrf_token, session.error_message))
+        page = _layout(
+            _panel_html(session.state, ticket, session.csrf_token, session.error_message)
+        )
         response = HTMLResponse(page)
         # Set the CSRF token as an __Host- cookie so it is bound to the
         # origin and cannot be set by subdomains. The form posts the same
@@ -205,13 +207,17 @@ def build_routes(
         if session is None or not _verify_csrf(posted_csrf, session.csrf_token):
             csrf_token = session.csrf_token if session else ""
             return HTMLResponse(
-                _panel_html(OnboardingState.NEW, ticket, csrf_token, "Invalid or missing CSRF token."),
+                _panel_html(
+                    OnboardingState.NEW, ticket, csrf_token, "Invalid or missing CSRF token."
+                ),
                 status_code=400,
             )
 
         if not all([ticket, email, password]):
             return HTMLResponse(
-                _panel_html(OnboardingState.NEW, ticket, session.csrf_token, "All fields are required."),
+                _panel_html(
+                    OnboardingState.NEW, ticket, session.csrf_token, "All fields are required."
+                ),
                 status_code=400,
             )
 
@@ -273,7 +279,12 @@ def build_routes(
         if session is None or not _verify_csrf(posted_csrf, session.csrf_token):
             csrf_token = session.csrf_token if session else ""
             return HTMLResponse(
-                _panel_html(OnboardingState.AWAITING_MFA, ticket, csrf_token, "Invalid or missing CSRF token."),
+                _panel_html(
+                    OnboardingState.AWAITING_MFA,
+                    ticket,
+                    csrf_token,
+                    "Invalid or missing CSRF token.",
+                ),
                 status_code=400,
             )
 

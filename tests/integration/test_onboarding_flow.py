@@ -338,7 +338,12 @@ async def test_full_onboarding_completes_and_oauth_resumes(app_with_onboarding):
         # Submit credentials → server starts the worker
         resp = await http.post(
             "/onboard/credentials",
-            data={"ticket": ticket, "email": "alice@x.com", "password": "secret", "csrf_token": csrf_token},
+            data={
+                "ticket": ticket,
+                "email": "alice@x.com",
+                "password": "secret",
+                "csrf_token": csrf_token,
+            },
         )
         assert resp.status_code == 200
 
@@ -423,7 +428,12 @@ async def test_wrong_mfa_code_marks_failed(app_with_onboarding):
 
         await http.post(
             "/onboard/credentials",
-            data={"ticket": ticket, "email": "alice@x.com", "password": "secret", "csrf_token": csrf_token},
+            data={
+                "ticket": ticket,
+                "email": "alice@x.com",
+                "password": "secret",
+                "csrf_token": csrf_token,
+            },
         )
         _wait_for_state(
             ctx["onboarding"],
@@ -431,7 +441,9 @@ async def test_wrong_mfa_code_marks_failed(app_with_onboarding):
             lambda st: st.value == "AWAITING_MFA",
         )
 
-        await http.post("/onboard/mfa", data={"ticket": ticket, "code": "wrong", "csrf_token": csrf_token})
+        await http.post(
+            "/onboard/mfa", data={"ticket": ticket, "code": "wrong", "csrf_token": csrf_token}
+        )
         session = _wait_for_state(
             ctx["onboarding"],
             ticket,
