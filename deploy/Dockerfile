@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 
 # ---- runtime ---------------------------------------------------------------
-FROM python:3.13-slim AS runtime
+FROM python:3.13-slim@sha256:d49c1ff87eb98eac346fc250f52925f726eb913c43a92854246dd03c9692ad67 AS runtime
 
 # Non-root user (uid/gid 1000) — matches the typical first non-system user
 # on the host so bind-mounted dirs Just Work without chown gymnastics.
