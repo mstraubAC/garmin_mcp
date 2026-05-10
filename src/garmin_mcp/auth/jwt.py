@@ -77,7 +77,7 @@ class JwtSigner:
         if not signing_key:
             raise ValueError("signing_key is required")
         self._keys: list[tuple[str, str]] = _parse_signing_keys(signing_key)
-        self._key_map: dict[str, str] = {kid: key for kid, key in self._keys}
+        self._key_map: dict[str, str] = dict(self._keys)
         self._issuer = issuer
         self._audience = audience
         self._algorithm = algorithm
