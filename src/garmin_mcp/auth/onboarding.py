@@ -111,8 +111,7 @@ class OnboardingManager:
                 len([s for s in self._sessions.values() if not _is_terminal(s.state)])
                 >= self._max_concurrent
             ):
-                log.warning("onboarding session cap reached")
-            raise OnboardingError("too many concurrent onboarding sessions")
+                raise OnboardingError("too many concurrent onboarding sessions")
             ticket = secrets.token_urlsafe(24)
             now = time.monotonic()
             session = OnboardingSession(
@@ -148,7 +147,7 @@ class OnboardingManager:
             self._sessions.pop(t, None)
 
     def evict_terminal_sessions(self) -> int:
-        """Drop COMPLETE/FAILED/EXPIRED sessions. Returns count evicted."""
+        """Drop COMPLETE/FAILED/EXPIRED sessions."""
         with self._lock:
             now = time.monotonic()
             to_evict = [
