@@ -34,7 +34,14 @@ services:
       - no-new-privileges:true
     read_only: true
     tmpfs:
-      - /tmp:exec
+      - /tmp:exec,size=64M
+    # Resource limits (B2)
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     # Healthcheck is also defined inside the image so `docker ps` shows it
     # when run standalone, but compose-level retries+start_period help during
     # initial boot when the SQLite schema is still being built.
