@@ -8,9 +8,9 @@
 #   docker compose -f deploy/docker-compose.yml build caddy
 
 # ---- builder ---------------------------------------------------------------
-FROM caddy:2-builder AS builder
+FROM caddy:2-builder@sha256:1ecefa333507828a592aaecc68d5f62a993787057429c04e9b0438a65c980a30 AS builder
 RUN xcaddy build --with github.com/mholt/caddy-ratelimit
 
 # ---- runtime ---------------------------------------------------------------
-FROM caddy:2-alpine
+FROM caddy:2-alpine@sha256:834468128c7696cec0ceea6172f7d692daf645ae51983ca76e39da54a97c570d
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy
