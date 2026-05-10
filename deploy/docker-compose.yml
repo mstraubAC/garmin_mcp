@@ -84,6 +84,7 @@ services:
       resources:
         limits:
           cpus: "0.5"
+          memory: 128M
           pids: 64
     depends_on:
       garmin-mcp:
