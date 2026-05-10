@@ -36,6 +36,10 @@ jobs:
     - name: Check coverage threshold
       run: uv run coverage report --fail-under=78
 
+    - name: Check Docker image digests are pinned
+      if: matrix.python-version == '3.13'
+      run: bash deploy/scripts/check-digests.sh
+
     - name: Test summary
       if: always()
       run: |

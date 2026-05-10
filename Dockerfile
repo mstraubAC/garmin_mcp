@@ -1,5 +1,5 @@
 # Use Python 3.12 slim image for smaller size
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:ec948fa5f90f4f8907e89f4800cfd2d2e91e391a4bce4a6afa77ba265bc3a2fe
 
 # Note: .dockerignore is symlinked to .gitignore for unified exclusion rules
 
@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install uv for faster dependency management
 # https://github.com/astral-sh/uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:latest@sha256:3a59a3cdd5f7c217faa36e32dbc7fddbb0412889c2a0a5229f6d790e5a019dd7 /uv /usr/local/bin/uv
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

@@ -6,7 +6,7 @@
 # - Healthcheck hits /healthz inside the container
 
 # ---- builder ---------------------------------------------------------------
-FROM ghcr.io/astral-sh/uv:0.5-python3.13-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:0.5-python3.13-bookworm-slim@sha256:e92baaf2b696ff16448644b0c781de48605b9c0873d16a0fd27de598d17cbc8c AS builder
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
