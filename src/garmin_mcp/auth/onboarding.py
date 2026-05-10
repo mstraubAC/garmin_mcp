@@ -101,6 +101,8 @@ class OnboardingManager:
         self,
         user_id: str,
         on_success: Callable[[str], str] | None = None,
+        client_ip: str | None = None,
+        user_agent_hash: str | None = None,
     ) -> OnboardingSession:
         """Allocate a new ticket. Caller must hand the ticket to the user
         and direct them to /onboard?ticket=...
@@ -120,6 +122,8 @@ class OnboardingManager:
                 created_at=now,
                 expires_at=now + self._ticket_ttl,
                 on_success=on_success,
+                client_ip=client_ip,
+                user_agent_hash=user_agent_hash,
             )
             self._sessions[ticket] = session
             return session
