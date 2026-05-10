@@ -10,6 +10,7 @@
 {
     # Global Let's Encrypt account email — change me.
     email admin@example.com
+    admin off
 }
 
 garmin-mcp.example.com {
