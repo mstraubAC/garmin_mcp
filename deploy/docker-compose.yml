@@ -19,6 +19,8 @@ services:
     restart: unless-stopped
     user: "1000:1000"
     env_file: ${ENV_FILE:-/etc/garmin-mcp/env}
+    environment:
+      - UVICORN_FORWARDED_ALLOW_IPS=172.30.0.0/16
     networks: [mcp_internal]
     expose: ["8000"]
     volumes:
@@ -74,6 +76,9 @@ services:
 networks:
   mcp_internal:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
 
 volumes:
   garmin-mcp-data:
