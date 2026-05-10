@@ -146,6 +146,19 @@ class OnboardingManager:
         for t in expired:
             self._sessions.pop(t, None)
 
+    def evict_terminal_sessions(self) -> int:
+        """Drop COMPLETE/FAILED/EXPIRED sessions."""
+        with self._lock:
+            now = time.monotonic()
+            to_evict = [
+                t
+                for t, s in self._sessions.items()
+                if _is_terminal(s.state) or now > s.expires_at + 60
+            ]
+            for t in to_evict:
+                self._sessions.pop(t, None)
+            return len(to_evict)
+
     # Credentials submission ----------------------------------------------
 
     def submit_credentials(
