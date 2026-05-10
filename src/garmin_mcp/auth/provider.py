@@ -36,6 +36,7 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import AnyUrl
 
 from garmin_mcp.auth.audit import AuditLog
+from garmin_mcp.server import _register_ip
 from garmin_mcp.auth.entra import EntraError, EntraOIDCClient
 from garmin_mcp.auth.garmin_tokens import GarminTokenStore
 from garmin_mcp.auth.jwt import JwtSigner
@@ -107,6 +108,14 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
                     error_description=f"redirect_uri {uri} must be HTTPS or localhost",
                 )
 
+        # Per-IP rate limit (token bucket).
+        register_ip = _register_ip.get() if _register_ip else None
+        if register_ip and not await self.guard.check_per_ip(register_ip):
+            raise RegistrationError(
+                error="server_error",  # type: ignore[arg-type]
+                error_description="rate limit exceeded; try again later",
+            )
+
         # Global cap
         if not self.guard.under_global_cap():
             raise RegistrationError(
@@ -131,7 +140,7 @@ class GarminMcpProvider(OAuthAuthorizationServerProvider):
             client_id=client_id,
             client_secret_hash=client_secret_hash,
             client_metadata=client_info.model_dump(mode="json"),
-            register_ip=None,  # populated by middleware later if available
+            register_ip=register_ip,
         )
         self.audit.record(
             "register.success",
