@@ -11,6 +11,7 @@ requirement here doesn't move.
 
 | Concern | Section | Summary |
 |---|---|---|
+| Data sensitivity & privacy | [§ Data sensitivity](#data-sensitivity-and-privacy) | Personal health data (Garmin). Medical-application diligence required for correctness and privacy. |
 | Authentication & authorization | [§ AuthN/Z](#authentication-and-authorization) | OAuth 2.1 + DCR + PKCE. JWT access tokens with rotatable signing key; refresh tokens rotated on use. |
 | Encryption at rest | [§ Encryption at rest](#encryption-at-rest) | Garmin OAuth tokens Fernet-encrypted. Encryption keys rotatable. |
 | Multi-user isolation | [§ Multi-user isolation](#multi-user-isolation) | Three independent enforcement points; user_id resolved before tool dispatch. |
@@ -28,6 +29,39 @@ requirement here doesn't move.
 | Operational health | [§ Operational health](#operational-health) | `/healthz` verifies the database; admin APIs disabled. |
 
 ---
+
+## Data sensitivity and privacy
+
+**The system handles personal health and fitness data.** Garmin Connect
+data includes activities, sleep metrics, heart rate, weight, training
+load, nutrition logs, and women's health information. While this
+application is not a regulated medical device, it MUST be built and
+maintained with equivalent diligence.
+
+### Requirements
+
+- **No silent data corruption.** Every tool that reads or writes health
+  metrics MUST have test coverage for correctness. A bug that silently
+  returns wrong sleep hours, heart rate, or training metrics could
+  mislead the user's health decisions.
+- **No cross-user data leakage.** Per-user isolation is the top
+  architectural quality goal (see § 1). The `ContextVar` resolver,
+  `MultiUserClientCache`, and Fernet encryption are load-bearing for
+  this requirement.
+- **Encryption at rest for all stored Garmin tokens.** The
+  `garmin_tokens` SQLite column contains Fernet-encrypted OAuth tokens
+  (see [§ Encryption at rest](#encryption-at-rest)). Plaintext tokens
+  MUST never appear in logs, audit files, or error messages.
+- **No logging of personal data.** Audit logs record authentication
+  events (register, token issue) but MUST NOT contain Garmin data
+  (activity names, health metrics). Application logs (`logging`) MUST
+  NOT log raw API responses or user-specific health data.
+- **Data portability.** Users own their data. The Garmin API already
+  provides this; this server adds a per-user token layer that a user
+  can revoke. There is no server-side data aggregation or analytics.
+- **Accessibility.** Users can delete their Garmin token blob at any
+  time via `/onboard` re-authentication, effectively removing stored
+  credentials from the server.
 
 ## Authentication and authorization
 

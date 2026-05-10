@@ -22,6 +22,7 @@ direct architectural consequence it forces.
 | O1 | **One person operates this** | No on-call, no Kubernetes, no managed Postgres; everything has to be deployable + debuggable from a laptop SSH'd into a VPS |
 | O2 | **Single Microsoft 365 tenant** | App registration is single-tenant (`AzureADMyOrg`); no multi-tenant complexity |
 | O3 | **No paid SaaS dependency** beyond what's already paid for | No Auth0/Clerk/Stytch; we run the OAuth proxy ourselves |
+| O4 | **Personal health data** — correctness and privacy are regulatory and ethical obligations | This system handles Garmin Connect data (fitness, sleep, heart rate, weight, nutrition). Even though it is not a regulated medical device, it must be built with the same diligence: no silent data corruption, no cross-user leaks, no unencrypted storage, and every data path must be tested. |
 
 ## Conventions
 
