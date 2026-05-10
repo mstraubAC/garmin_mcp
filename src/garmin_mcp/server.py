@@ -69,15 +69,10 @@ from garmin_mcp.tools import (
 )
 from garmin_mcp.user_context import (
     ClientCache,
-    GarminSessionExpiredError,
     MultiUserClientCache,
     SingleUserClientCache,
-    UserNotOnboardedError,
     set_client_cache,
 )
-
-# ContextVar for the client IP captured on POST /register.
-_register_ip: "ContextVar[str] | None" = None
 
 
 def build_mcp(
@@ -218,22 +213,6 @@ def make_app(
                 except (asyncio.CancelledError, Exception):
                     pass
 
-    # Middleware to capture client IP for /register rate limiting.
-    # Runs on every request; cheap — just reads the ASGI client tuple.
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.requests import Request as StarletteRequest
-
-    class _RegisterIPMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request: StarletteRequest, call_next):
-            if request.url.path == "/register" and request.method == "POST":
-                if _register_ip is not None:
-                    # X-Forwarded-For is trusted because Caddy strips client-supplied
-                    # headers and only forwards its own (see H3).
-                    xff = request.headers.get("x-forwarded-for", "")
-                    ip = xff.split(",")[0].strip() if xff else (request.client.host if request.client else "unknown")
-                    _register_ip.set(ip)
-            return await call_next(request)
-
     routes: list = [Route("/healthz", healthz, methods=["GET"])]
     if auth_provider is not None:
         routes.append(_build_callback_route(auth_provider))
@@ -246,7 +225,7 @@ def make_app(
     routes.append(Mount("/static", app=StaticFiles(directory=_static_dir), name="static"))
     routes.append(Mount("/", app=mcp_app))
 
-    return Starlette(routes=routes, lifespan=lifespan, middleware=[Middleware(_RegisterIPMiddleware)])
+    return Starlette(routes=routes, lifespan=lifespan, middleware=[Middleware(CaptureRegisterIPMiddleware)])
 
 
 def make_production_app() -> Starlette:
@@ -339,3 +318,21 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+# ---- /register IP capture middleware ------------------------------------
+
+class CaptureRegisterIPMiddleware:
+    """Captures client IP on /register POST into user_context.register_ip."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if (scope["type"] == "http" and scope.get("path") == "/register"
+                and scope.get("method") == "POST"):
+            xff = dict(scope.get("headers", [])).get(b"x-forwarded-for", b"").decode()
+            ip = xff.split(",")[0].strip() if xff else scope.get("client", ("", 0))[0]
+            from garmin_mcp.user_context import register_ip
+            register_ip.set(ip)
+        await self.app(scope, receive, send)
+
+
