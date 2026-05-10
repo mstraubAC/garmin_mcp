@@ -36,14 +36,13 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 from pydantic import AnyUrl
 
 from garmin_mcp.auth.audit import AuditLog
-from garmin_mcp.user_context import register_ip
 from garmin_mcp.auth.entra import EntraError, EntraOIDCClient
 from garmin_mcp.auth.garmin_tokens import GarminTokenStore
 from garmin_mcp.auth.jwt import JwtSigner
 from garmin_mcp.auth.onboarding import OnboardingManager
 from garmin_mcp.auth.storage import Storage
 from garmin_mcp.auth.throttle import RegistrationGuard
-from garmin_mcp.user_context import set_current_user_id
+from garmin_mcp.user_context import register_ip, set_current_user_id
 
 
 def _hash_token(token: str) -> str:
