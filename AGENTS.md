@@ -11,7 +11,7 @@ updated in the same change set:
 
 1. Code change → at least one test for it (new test or updated existing).
 2. Anything described by an arc42 chapter changed → update the relevant
-   chapter under [`doc/`](../doc/):
+   chapter under [`doc/`](doc/):
    - building blocks → `doc/05-building-block-view.md`
    - runtime flows → `doc/06-runtime-view.md`
    - deployment / env vars / mounts → `doc/07-deployment-view.md`
@@ -19,7 +19,7 @@ updated in the same change set:
    - new fragility → `doc/11-risks-and-technical-debt.md`
 3. The contributor-facing surface changed (operating modes,
    prerequisites, project layout, Quick Start) → update
-   [`README.md`](../README.md).
+   [`README.md`](README.md).
 
 ## Code conventions
 
