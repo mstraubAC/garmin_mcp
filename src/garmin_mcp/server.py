@@ -311,7 +311,7 @@ def main() -> None:
         host=host,
         port=port,
         proxy_headers=True,
-        forwarded_allow_ips="*",
+        forwarded_allow_ips=os.environ.get("UVICORN_FORWARDED_ALLOW_IPS", "127.0.0.1"),
     )
 
 

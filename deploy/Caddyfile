@@ -34,6 +34,8 @@ garmin-mcp.example.com {
     request_header X-Forwarded-For  {remote_host}
     request_header X-Real-IP        {remote_host}
 
+    # Strip any client-supplied X-Forwarded-For, then Caddy sets its own.
+    request_header -X-Forwarded-For
     reverse_proxy garmin-mcp:8000 {
         # Stream the SSE/streamable-HTTP MCP responses without buffering.
         flush_interval -1
