@@ -54,20 +54,20 @@ repos:
 #        exclude: uv.lock
 
   # ------------------------------------------------------------------
-  # Type checking (CI-only for now — 61 mypy errors across 12 files
-  # need incremental fixing.  Keep the CI job in security.yml active.)
-  #
-  # Uncomment when type coverage is complete:
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.17.0
-  #   hooks:
-  #     - id: mypy
-  #       additional_dependencies:
-  #         - types-requests
-  #         - types-python-dateutil
-  #       args: []   # config in pyproject.toml
-  #       files: ^src/
+  # Type checking
+  # Mypy finds type mismatches, missing imports, and other errors.
+  # Configuration in pyproject.toml uses allow-untyped-defs for backward
+  # compatibility with tool modules wrapping untyped Garmin APIs.
   # ------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.17.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-requests
+          - types-python-dateutil
+        args: []   # config in pyproject.toml
+        files: ^src/
 
   # ------------------------------------------------------------------
   # Push-stage: full test suite with coverage
