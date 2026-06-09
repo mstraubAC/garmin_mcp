@@ -70,6 +70,27 @@ repos:
         files: ^src/
 
   # ------------------------------------------------------------------
+  # Docker build — only runs when a Dockerfile is staged.
+  # Catches broken COPY paths, missing packages, syntax errors before
+  # the image is needed at deploy time.
+  # ------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: docker-build-app
+        name: Docker build (app)
+        entry: bash -c 'docker build -f deploy/Dockerfile -t garmin-mcp:pre-commit-check . && docker image rm garmin-mcp:pre-commit-check'
+        language: system
+        pass_filenames: false
+        files: '^deploy/Dockerfile$'
+
+      - id: docker-build-caddy
+        name: Docker build (caddy)
+        entry: bash -c 'docker build -f deploy/Dockerfile.caddy -t garmin-mcp-caddy:pre-commit-check deploy/ && docker image rm garmin-mcp-caddy:pre-commit-check'
+        language: system
+        pass_filenames: false
+        files: '^deploy/Dockerfile\.caddy$'
+
+  # ------------------------------------------------------------------
   # Push-stage: full test suite with coverage
   # Runs on `git push`, not on every `git commit`.
   # ------------------------------------------------------------------

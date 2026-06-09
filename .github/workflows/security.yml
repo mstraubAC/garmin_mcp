@@ -126,3 +126,55 @@ jobs:
         for mod in modules:
             print(f'  - {mod}')
         IMPORT_CHECK
+
+    - name: Entry point validation
+      run: |
+        uv run python << 'EP_CHECK'
+        import sys
+        import importlib
+        import tomllib
+
+        sys.path.insert(0, 'src')
+
+        with open('pyproject.toml', 'rb') as f:
+            config = tomllib.load(f)
+
+        scripts = config.get('project', {}).get('scripts', {})
+        failed = []
+
+        for script_name, entrypoint in scripts.items():
+            if ':' not in entrypoint:
+                failed.append((script_name, f'invalid format (expected module:attr): {entrypoint}'))
+                continue
+            module_name, attr_name = entrypoint.split(':', 1)
+            try:
+                mod = importlib.import_module(module_name)
+            except ImportError as e:
+                failed.append((script_name, f'cannot import {module_name}: {e}'))
+                continue
+            if not hasattr(mod, attr_name):
+                failed.append((script_name, f"'{attr_name}' not found in {module_name}"))
+
+        if failed:
+            print('❌ Entry point validation FAILED:')
+            for ep, error in failed:
+                print(f'  {ep}: {error}')
+            sys.exit(1)
+
+        print(f'✅ All {len(scripts)} entry points validated:')
+        for name, ep in scripts.items():
+            print(f'  {name} = {ep}')
+        EP_CHECK
+
+  docker-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Build app image
+      run: docker build -f deploy/Dockerfile -t garmin-mcp:ci-check .
+
+    - name: Build Caddy image
+      run: docker build -f deploy/Dockerfile.caddy -t garmin-mcp-caddy:ci-check deploy/
