@@ -75,11 +75,54 @@ jobs:
         uv run mypy src/garmin_mcp
         echo "✅ Mypy type checking passed"
 
-    - name: Check import structure
+    - name: Strict import validation (all modules)
       run: |
-        uv run python -c "
+        uv run python << 'IMPORT_CHECK'
         import sys
+        import importlib
+        import pathlib
         sys.path.insert(0, 'src')
-        import garmin_mcp
-        print('✅ Package imports successfully')
-        "
+
+        # Dynamically discover all Python modules in src/garmin_mcp
+        src_dir = pathlib.Path('src/garmin_mcp')
+        modules = set()
+
+        for py_file in src_dir.rglob('*.py'):
+            # Skip __pycache__
+            if '__pycache__' in py_file.parts:
+                continue
+
+            # Convert file path to module name
+            # src/garmin_mcp/auth/jwt.py -> garmin_mcp.auth.jwt
+            rel_path = py_file.relative_to('src')
+            module_name = str(rel_path.with_suffix('')).replace('/', '.')
+            modules.add(module_name)
+
+        # Also add package names (directories with __init__.py)
+        for init_file in src_dir.rglob('__init__.py'):
+            if '__pycache__' in init_file.parts:
+                continue
+            rel_path = init_file.parent.relative_to('src')
+            if rel_path != pathlib.Path('.'):
+                module_name = str(rel_path).replace('/', '.')
+                modules.add(module_name)
+
+        modules = sorted(modules)
+        failed = []
+
+        for module_name in modules:
+            try:
+                importlib.import_module(module_name)
+            except Exception as e:
+                failed.append((module_name, str(e)))
+
+        if failed:
+            print('❌ Import validation FAILED:')
+            for mod, error in failed:
+                print(f'  {mod}: {error}')
+            sys.exit(1)
+
+        print(f'✅ All {len(modules)} modules imported successfully:')
+        for mod in modules:
+            print(f'  - {mod}')
+        IMPORT_CHECK
