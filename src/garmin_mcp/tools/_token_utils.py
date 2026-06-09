@@ -7,6 +7,26 @@ from garminconnect import Garmin
 from garth.exc import GarthHTTPError
 
 
+def init_api(email: str, password: str) -> Garmin | None:
+    """Initialize Garmin API client with email and password.
+
+    For development/no-auth mode only. Authenticates via garth and
+    returns a Garmin client. Returns None if authentication fails.
+
+    Args:
+            email: Garmin Connect account email
+            password: Garmin Connect account password
+
+    Returns:
+            Garmin client instance if successful, None otherwise
+    """
+    try:
+        client = Garmin(email, password)
+        return client
+    except Exception:
+        return None
+
+
 def get_token_path() -> str:
     """Get token path from environment or default.
 
