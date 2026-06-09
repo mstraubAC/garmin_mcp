@@ -54,138 +54,102 @@ Premature now.
 
 ## Round 2 — gaps surfaced by the post-round-1 audit
 
-Each item below is a deviation from a requirement in
-[chapter 8](08-crosscutting-concepts.md). See
-[`/HARDENING.md`](../HARDENING.md) for the PR plan.
+Each item below was a deviation from a requirement in
+[chapter 8](08-crosscutting-concepts.md). All items have been resolved
+via PRs H1–H28 (round 2 + corrections) and H29–H32 (addendum), now all merged.
 
 ### R11 — Web security headers not set on browser-facing responses
 
-**Impact.** `/onboard*` returns HTML without HSTS / CSP / X-Frame-Options /
-X-Content-Type-Options / Referrer-Policy. An XSS or clickjacking
-vulnerability in the onboarding form has no defense in depth.
+**Status: ✅ CLOSED (H2, PR #40).**
 
-**Required by:** [§ Web security headers](08-crosscutting-concepts.md#web-security-headers).
-**Plan:** HARDENING A1 (PR H2).
+Web security headers (HSTS, CSP, X-Frame-Options, X-Content-Type-Options,
+Referrer-Policy) are now set in Caddy and applied to all responses.
 
 ### R12 — Forwarded-IP trust over-broad
 
-**Impact.** uvicorn `forwarded_allow_ips="*"` lets any sender that reaches
-:8000 spoof the source IP via `X-Forwarded-For`. With Caddy in front
-this is contained, but a misconfig that exposes :8000 directly turns the
-per-IP guard (R13) into a no-op.
+**Status: ✅ CLOSED (H3, PR #41 + H32, PR #65).**
 
-**Required by:** [§ Trust boundary](08-crosscutting-concepts.md#trust-boundary).
-**Plan:** HARDENING A2 (PR H3).
+`forwarded_allow_ips` now scoped to `127.0.0.1` (the Docker bridge);
+Caddy explicitly strips inbound `X-Forwarded-For` before forwarding.
 
 ### R13 — `/register` per-IP rate limit not wired
 
-**Impact.** `RegistrationGuard.check_per_ip()` is implemented + unit-
-tested but never called from `provider.register_client()`. The
-documented "5 successful DCR registrations / IP / hour" cap is
-documentation, not behavior. Up to the global cap (10 000 rows), DCR is
-unrate-limited per source.
+**Status: ✅ CLOSED (H4, PR #42).**
 
-**Required by:** [§ Rate limiting](08-crosscutting-concepts.md#rate-limiting).
-**Plan:** HARDENING A3 (PR H4).
+`RegistrationGuard.check_per_ip()` is now called in `provider.register_client()`,
+enforcing the documented "5 successful DCR registrations / IP / hour" cap.
 
 ### R14 — Base images pinned by tag, not digest
 
-**Impact.** A future `python:3.13-slim` rebuild upstream — or a
-compromised registry push — silently changes our runtime contents on
-the next `docker compose build`.
+**Status: ✅ CLOSED (H5, PR #43 + H26, PR #60).**
 
-**Required by:** [§ Supply chain integrity](08-crosscutting-concepts.md#supply-chain-integrity).
-**Plan:** HARDENING A4 (PR H5).
+All Docker base image `FROM` lines pinned by digest; CI check prevents regression.
 
 ### R15 — Container capabilities + read-only rootfs not set
 
-**Impact.** Both containers run with the default Linux capability set
-(CAP_NET_RAW, CAP_DAC_OVERRIDE, …) and writable root filesystems. RCE in
-either container has more leverage than necessary.
+**Status: ✅ CLOSED (H6, PR #44).**
 
-**Required by:** [§ Container hardening](08-crosscutting-concepts.md#container-hardening).
-**Plan:** HARDENING B1 (PR H6).
+Both containers run with `cap_drop: ALL`, `no-new-privileges: true`,
+and read-only root filesystem (with necessary tmpfs mounts).
 
 ### R16 — No container resource limits
 
-**Impact.** A runaway tool call or memory leak can OOM the host. On a
-small VPS, the kernel's victim is often `dockerd` itself.
+**Status: ✅ CLOSED (H6, PR #44 + H21, PR #56).**
 
-**Required by:** [§ Container hardening](08-crosscutting-concepts.md#container-hardening).
-**Plan:** HARDENING B2 (PR H6).
+Both services have CPU, memory, and PID limits set in compose; Caddy
+has tmpfs size cap for `/tmp`.
 
 ### R17 — `/healthz` doesn't verify the database
 
-**Impact.** A corrupted SQLite, locked file, or permission failure
-keeps the container in "healthy" state. Docker doesn't restart it,
-Caddy keeps proxying, requests fail with 500s.
+**Status: ✅ CLOSED (H7, PR #45 + H31, PR #64).**
 
-**Required by:** [§ Operational health](08-crosscutting-concepts.md#operational-health).
-**Plan:** HARDENING B3 (PR H7).
+`/healthz` now queries the SQLite database; uses the injected Storage
+singleton to avoid fd leaks.
 
 ### R18 — Caddy admin API not explicitly disabled
 
-**Impact.** Caddy's default admin API (localhost:2019) isn't bound
-externally but is reachable from any process inside the caddy
-container. RCE in caddy → reload routes / dump config / shut Caddy
-down.
+**Status: ✅ CLOSED (H7, PR #45).**
 
-**Required by:** [§ Container hardening](08-crosscutting-concepts.md#container-hardening).
-**Plan:** HARDENING B4 (PR H7).
+Caddy admin API disabled via `admin off` in the global config.
 
 ### R19 — Onboarding session and worker-thread leaks
 
-**Impact.** Terminal onboarding sessions (COMPLETE / FAILED / EXPIRED)
-are never evicted from `OnboardingManager._sessions` until a new
-`create_session()` runs. The MFA timeout is 5 minutes, so each abandoned
-session holds a daemon thread for that long. Sustained probing creates
-many concurrent threads + entries.
+**Status: ✅ CLOSED (H8, PR #46 + H17, PR #57).**
 
-**Required by:** [§ Concurrency model](08-crosscutting-concepts.md#concurrency-model).
-**Plan:** HARDENING C1 (PR H8).
+`OnboardingManager.evict_terminal_sessions()` wired into cleanup loop;
+sessions capped at 10 concurrent, expired sessions cleaned up.
 
 ### R20 — Cache double-load + user-row insert races
 
-**Impact.** Concurrent first-call requests for the same `user_id`
-both miss the cache and both decrypt + build a `Garmin` instance.
-Concurrent first-sign-ins for the same `(entra_sub, entra_tid)` race
-on the INSERT and one raises a UNIQUE constraint exception.
+**Status: ✅ CLOSED (H9, PR #47).**
 
-**Required by:** [§ Concurrency model](08-crosscutting-concepts.md#concurrency-model).
-**Plan:** HARDENING C2 (PR H9).
+Cache loading protected by double-checked locking; user-row inserted via
+`INSERT OR IGNORE` (atomic, no race on UNIQUE constraint).
 
 ### R21 — JWT signing key has no `kid`-based rotation
 
-**Impact.** Rotating `JWT_SIGNING_KEY` instantly invalidates every
-in-flight access token. Every connected Claude session has to refresh.
-Works, but isn't graceful — and discourages key rotation.
+**Status: ✅ CLOSED (H10, PR #48).**
 
-**Required by:** [§ Authentication and authorization](08-crosscutting-concepts.md#authentication-and-authorization).
-**Plan:** HARDENING C3 (PR H10).
+JWT tokens now carry a `kid` (key ID) header; verifier can accept both
+old and new signing keys during rotation with configurable grace period.
 
 ### R22 — No CSRF protection on `/onboard` POSTs
 
-**Impact.** A malicious page that knows or guesses an active onboarding
-ticket can submit on the user's behalf. Window is small (5-min ticket
-TTL) but the consequence is the user's Garmin password is delivered
-to the attacker.
+**Status: ✅ CLOSED (H11, PR #49 + H29, PR #62).**
 
-**Required by:** [§ CSRF protection](08-crosscutting-concepts.md#csrf-protection).
-**Plan:** HARDENING C4 (PR H11).
+`OnboardingSession` carries a random CSRF token; all POST handlers verify
+via `hmac.compare_digest` before processing.
 
 ### R23 — Onboarding tickets not bound to UA + IP
 
-**Impact.** A ticket leaked via Referer / browser history / log files
-is replayable from any device for ~5 minutes.
+**Status: ✅ CLOSED (H12, PR #53 + H23, PR #61 + H30, PR #63).**
 
-**Required by:** [§ Multi-user isolation](08-crosscutting-concepts.md#multi-user-isolation).
-**Plan:** HARDENING C5 (PR H12).
+Tickets bound to User-Agent hash and client IP at OAuth callback;
+POST handlers verify both bindings before accepting credentials/MFA.
 
 ### R24 — DCR doesn't allowlist `grant_types` / `response_types`
 
-**Impact.** A client could register with `grant_types=["password"]` or
-`response_types=["token"]`. The SDK rejects those flows at `/token`,
-but the registration itself shouldn't be accepted in the first place.
+**Status: ✅ CLOSED (H13, PR #51).**
 
-**Required by:** [§ Authentication and authorization](08-crosscutting-concepts.md#authentication-and-authorization).
-**Plan:** HARDENING C6 (PR H13).
+Registration now rejects clients with disallowed grant/response types;
+only `authorization_code` (with PKCE) is accepted.
